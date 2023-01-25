@@ -60,10 +60,11 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             total_loss += loss
         else:
             total_loss += loss.item()
+            total_loss += loss
+        else:
+            total_loss += loss.item()
         #if batch * len(X) > 12800:
         #    return total_loss
-            
-        
     return total_loss     
          
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
@@ -78,7 +79,7 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     diff = entropyLoss + epsilon * prune_filter_control_exp
     return diff
     
-           
+
 def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, 
           quantizeDtype = torch.float16, realDtype = torch.float32):
     size = len(dataloader.dataset)
@@ -132,12 +133,15 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             print(f"Real loss: {realLoss:>7f}  [{current:>5d}/{size:>5d}]")
             a = torch.square(torch.sigmoid(prune_filter.squeeze()))
             print("filter is: ", a)
-            
+            total_loss += realLoss
+            total_mask_loss += loss
+        else:
+            total_loss += realLoss.item()
+            total_mask_loss += loss.item()
+
         #if batch * len(X) > 12800:
         #    return total_loss, total_mask_loss  
 
-        total_loss += realLoss
-        total_mask_loss += loss
     return total_loss, total_mask_loss  
 
 
