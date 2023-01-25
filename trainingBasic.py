@@ -218,7 +218,7 @@ start_time = time.time()
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error = train(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2)
-    avg_errors.append(avg_error)
+    avg_errors.append(avg_error.detach().numpy())
     avg_mask_errors.append(0)
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
@@ -236,15 +236,15 @@ start_time = time.time()
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
-    avg_errors.append(avg_error)
-    avg_mask_errors.append(mask_error)
+    avg_errors.append(avg_error.detach().numpy())
+    avg_mask_errors.append(mask_error.detach().cpu().numpy())
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
 print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
 
-model1.resetDePrune()
+model1.resetPrune()
 
 #pruning
 epochs = 5
@@ -253,8 +253,8 @@ start_time = time.time()
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
-    avg_errors.append(avg_error)
-    avg_mask_errors.append(mask_error)
+    avg_errors.append(avg_error.detach().numpy())
+    avg_mask_errors.append(mask_error.detach().cpu().numpy())
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
 print("Done!")
@@ -263,11 +263,13 @@ print("time taken in seconds: ", end_time-start_time)
 
 print("errors across: ", avg_errors)
 plt.plot(avg_errors)
-plt.show()
+plt.savefig("avg_errors.jpg")
+print("plot saved at 'avg_errors.jpg")
 
 print("mask errors across: ", avg_mask_errors)
 plt.plot(avg_mask_errors)
-plt.show()
+plt.savefig("avg_mask_errors.jpg")
+print("plot saved at 'avg_mask_errors.jpg")
 
 
 # torch.save(model.state_dict(), model_path)

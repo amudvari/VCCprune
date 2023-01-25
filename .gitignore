@@ -4,3 +4,4 @@ datas/
 *.ipynb
 *.pyc
 *.pth
+*jpg
