@@ -213,12 +213,12 @@ avg_errors = []
 avg_mask_errors = []
 
 # Training
-epochs = 10
+epochs = 1
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error = train(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2)
-    avg_errors.append(avg_error.detach().numpy())
+    avg_errors.append(avg_error)
     avg_mask_errors.append(0)
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
@@ -230,14 +230,14 @@ optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3)
 optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3)
     
 #pruning
-epochs = 5
+epochs = 1
 budget = 6
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
-    avg_errors.append(avg_error.detach().numpy())
-    avg_mask_errors.append(mask_error.detach().cpu().numpy())
+    avg_errors.append(avg_error)
+    avg_mask_errors.append(mask_error)
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
 print("Done!")
@@ -247,14 +247,14 @@ print("time taken in seconds: ", end_time-start_time)
 model1.resetPrune()
 
 #pruning
-epochs = 5
+epochs = 1
 budget = 3
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
-    avg_errors.append(avg_error.detach().numpy())
-    avg_mask_errors.append(mask_error.detach().cpu().numpy())
+    avg_errors.append(avg_error)
+    avg_mask_errors.append(mask_error)
     #test(test_dataloader, model, loss_fn)
     print("entire epoch's error: ", avg_error)
 print("Done!")
