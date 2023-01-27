@@ -60,9 +60,6 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             total_loss += loss
         else:
             total_loss += loss.item()
-            total_loss += loss
-        else:
-            total_loss += loss.item()
         #if batch * len(X) > 12800:
         #    return total_loss
     return total_loss     
