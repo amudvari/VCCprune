@@ -57,11 +57,13 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-            
+            total_loss += loss
+        else:
+            total_loss += loss.item()
         #if batch * len(X) > 12800:
         #    return total_loss
             
-        total_loss += loss
+        
     return total_loss     
          
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
