@@ -8,12 +8,13 @@ def load_CIFAR10_dataset(batch_size = 64):
         train=True,
         download=True,
         transform= transforms.Compose([
-                    transforms.Resize(size=(32, 32)),
+                    transforms.RandomCrop(32, padding=4),
+                    transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
-                    transforms.Normalize( 
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010) 
-                    )
-                ])   
+                    transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    ),
+                ]) 
     )
 
     test_data = datasets.CIFAR10(
@@ -21,12 +22,11 @@ def load_CIFAR10_dataset(batch_size = 64):
         train=False,
         download=True,
         transform=transforms.Compose([
-                    transforms.Resize(size=(32, 32)),
                     transforms.ToTensor(),
-                    transforms.Normalize( 
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010) 
-                    )
-                ])   
+                    transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    ),
+                ])
     )
 
     classes = [
@@ -42,4 +42,4 @@ def load_CIFAR10_dataset(batch_size = 64):
         'truck']
 
 
-    return DataLoader(training_data, batch_size=batch_size), DataLoader(test_data, batch_size=batch_size), classes
+    return DataLoader(training_data, batch_size=batch_size, shuffle=True), DataLoader(test_data, batch_size=batch_size), classes
