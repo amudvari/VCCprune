@@ -32,7 +32,7 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
     total_loss = 0
       
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to('cpu'), y.to(device)
+        X, y = X.to(device), y.to(device)
 
         # Compute prediction error
         split_vals, prune_filter = model_local(X, local=True, prune=False)
@@ -51,7 +51,7 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         
         loss.backward()
         grad_store = serverInput_split_vals.grad
-        split_grad = grad_store.detach().to('cpu')   
+        split_grad = grad_store.detach().to(device)   
         
         split_vals.backward(split_grad)  
         optimizer_server.step()    
@@ -94,14 +94,14 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
     total_mask_loss = 0
       
     for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to('cpu'), y.to(device)
+        X, y = X.to(device), y.to(device)
 
         # Compute prediction error
         split_vals, prune_filter = model_local(X, local = True, prune=True)
         detached_split_vals = split_vals.detach()
         quantized_split_vals = detached_split_vals.to(quantizeDtype)
         
-        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
+        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to(device)
         mask_allowed = 0
         for entry in range(len(mask)):
             if mask[entry] < 0.1: 
@@ -125,7 +125,7 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         
         loss.backward()
         grad_store = serverInput_split_vals.grad
-        split_grad = grad_store.detach().to('cpu')   
+        split_grad = grad_store.detach().to(device)   
         
         split_vals.backward(split_grad)  
         optimizer_server.step()    
@@ -169,7 +169,7 @@ def test(dataloader, model_local, model_server, loss_fn, quantizeDtype = torch.f
             #X, y = X.to(device), y.to(device)
             #pred = model(X)
             
-            X, y = X.to('cpu'), y.to(device)
+            X, y = X.to(device), y.to(device)
 
             # Compute prediction error
             split_vals, prune_filter = model_local(X, local=True, prune=False)
@@ -203,14 +203,14 @@ def prunetest(dataloader, model_local, model_server, loss_fn, quantizeDtype = to
             #X, y = X.to(device), y.to(device)
             #pred = model(X)
             
-            X, y = X.to('cpu'), y.to(device)
+            X, y = X.to(device), y.to(device)
 
             # Compute prediction error
             split_vals, prune_filter = model_local(X, local=True, prune=False)
             detached_split_vals = split_vals.detach()
             quantized_split_vals = detached_split_vals.to(quantizeDtype)
             
-            mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
+            mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to(device)
             mask_allowed = 0
             for entry in range(len(mask)):
                 if mask[entry] < 0.1: 
@@ -244,7 +244,7 @@ compressionProps['resolution_compression_factor'] = 1 ###layer compression facto
 num_classes = 10
 
 device = get_device()
-model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to('cpu')
+model1 = NeuralNetwork_local(compressionProps).to(device)
 print(device)
 model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
 #input_lastLayer = model2.classifier[6].in_features
@@ -266,7 +266,7 @@ test_accs = []
 test_errors = []
 
 # Training
-epochs = 17
+epochs = 150
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -312,7 +312,7 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
         
 #pruning
-epochs = 7
+epochs = 0
 budget = 32
 start_time = time.time() 
 for t in range(epochs):
@@ -355,8 +355,13 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
 
 #pruning
+<<<<<<< HEAD
 epochs = 7
 budget = 16
+=======
+epochs = 0
+budget = 4
+>>>>>>> Change Transformations and shuffle=True
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -414,8 +419,13 @@ with open(filename, 'w', newline="") as file:
 
 
 '''
+<<<<<<< HEAD
 model.to('cpu')
 # Evalua
+=======
+model.to(device)
+# Evaluation
+>>>>>>> Change Transformations and shuffle=True
 model.eval()
 x, y = next(iter(test_dataloader))
 with torch.no_grad():
