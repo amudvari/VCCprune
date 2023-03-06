@@ -13,6 +13,7 @@ from models.vccModel import NeuralNetwork
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
+from datasets.cifar100 import load_CIFAR100_dataset
 
 import matplotlib.pyplot as plt
 import csv
@@ -250,7 +251,7 @@ model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
 #input_lastLayer = model2.classifier[6].in_features
 #model2.classifier[6] = nn.Linear(input_lastLayer,10)
 model2 = model2.to(device)
-train_dataloader, test_dataloader, _ = load_CIFAR10_dataset(batch_size = 16)   #batch_size
+train_dataloader, test_dataloader, classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
@@ -312,7 +313,7 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
         
 #pruning
-epochs = 0
+epochs = 30
 budget = 32
 start_time = time.time() 
 for t in range(epochs):
@@ -355,11 +356,7 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
 
 #pruning
-<<<<<<< HEAD
-epochs = 7
-budget = 16
-=======
-epochs = 0
+epochs = 30
 budget = 4
 >>>>>>> Change Transformations and shuffle=True
 start_time = time.time() 
