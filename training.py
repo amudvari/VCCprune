@@ -14,9 +14,15 @@ from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.cifar100 import load_CIFAR100_dataset
+from datasets.stl10 import load_STL10_dataset
 
 import matplotlib.pyplot as plt
 import csv
+
+# Choose Dataset ('STL10', 'CIFAR10', 'CIFAR100')
+DATASET = "STL10"
+
+DELTA = 0.001
 
 def get_device():
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -74,7 +80,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     
     prune_filter_squeezed = prune_filter.squeeze()
-    prune_filter_control = torch.exp( 0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    
+    prune_filter_control = torch.exp( DELTA * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
     #(( (sum(prune_filter_squeezed)-budget) > 0 ).float() * 10000 ).squeeze()
     #print(prune_filter)
     #print(prune_filter_control)
@@ -251,7 +258,14 @@ model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
 #input_lastLayer = model2.classifier[6].in_features
 #model2.classifier[6] = nn.Linear(input_lastLayer,10)
 model2 = model2.to(device)
-train_dataloader, test_dataloader, classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
+
+if DATASET == "CIFAR10":
+    train_dataloader, test_dataloader, classes = load_CIFAR10_dataset(batch_size = 16)   #batch_size
+elif DATASET == "CIFAR100":
+    train_dataloader, test_dataloader, classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
+elif DATASET == "STL10":
+    train_dataloader, test_dataloader, classes = load_STL10_dataset(batch_size = 16)   #batch_size
+    
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
@@ -267,7 +281,7 @@ test_accs = []
 test_errors = []
 
 # Training
-epochs = 150
+epochs = 50
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -313,8 +327,8 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
         
 #pruning
-epochs = 30
-budget = 32
+epochs = 15
+budget = 16
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -356,9 +370,8 @@ for k,v in model1.state_dict().items():
 model1.resetPrune()
 
 #pruning
-epochs = 30
+epochs = 15
 budget = 4
->>>>>>> Change Transformations and shuffle=True
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -389,22 +402,23 @@ print("Test loaded")
 test(test_dataloader, model1, model2, loss_fn)
 
 print("errors across: ", avg_errors)
-plt.plot(avg_errors)
-plt.show()
+# plt.plot(avg_errors)
+# plt.show()
 
 print("mask errors across: ", avg_mask_errors)
-plt.plot(avg_mask_errors)
-plt.show()
+# plt.plot(avg_mask_errors)
+# plt.show()
 
 print("test accuracy across: ", test_accs)
-plt.plot(test_accs)
-plt.show()
+# plt.plot(test_accs)
+# plt.show()
 
 print("test errors across: ", test_errors)
-plt.plot(test_errors)
-plt.show()
+# plt.plot(test_errors)
+# plt.show()
 
-filename = 'prune_data.csv'
+t = time.time_ns()
+filename = f'results/prune_data_{DATASET}_{t}_delta{DELTA}.csv'
 epochs = np.arange(1,len(avg_errors)+1)
 rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
 with open(filename, 'w', newline="") as file:
