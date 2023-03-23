@@ -20,10 +20,10 @@ class encodingUnit(nn.Module):
         self.prune_filter = nn.Parameter(prune_inn)
         self.count = 0
             
-        kernelHeight = 3
-        kernelWidth = 3
-        strideVal = 1
-        paddingVal = 1
+        kernelHeight = 2 + compressionProps['resolution_compression_factor']
+        kernelWidth = 2 + compressionProps['resolution_compression_factor']
+        strideVal = compressionProps['resolution_compression_factor']
+        paddingVal = compressionProps['resolution_compression_factor']
         
         self.convIn1 = nn.Conv2d(in_channels=prevLayerChannels,
                                     out_channels=compressedChannelNum,
@@ -91,18 +91,19 @@ class decodingUnit(nn.Module):
         prevLayerChannels = prevLayerProps['PrevLayerOutChannel']
         compressedChannelNum = int(prevLayerChannels / compressionProps['feature_compression_factor'])
             
-        kernelHeight = 3
-        kernelWidth = 3
-        strideVal = 1
-        paddingVal = 1
+        kernelHeight = 2 + compressionProps['resolution_compression_factor']
+        kernelWidth = 2 + compressionProps['resolution_compression_factor']
+        strideVal = compressionProps['resolution_compression_factor']
+        paddingVal = compressionProps['resolution_compression_factor']
         
         self.convOut1 = nn.ConvTranspose2d(in_channels=compressedChannelNum,
                                         out_channels=prevLayerChannels,
                                         kernel_size=(kernelHeight,kernelWidth),
                                         stride = strideVal,
-                                        padding = paddingVal)
+                                        padding  = paddingVal)
         
+        self.batchnormOut = nn.BatchNorm2d(prevLayerChannels, momentum=0.03, eps=1E-4)
 
     def forward(self,x):
-        x = torch.relu(self.convOut1(x))
+        x = torch.relu(self.batchnormOut(self.convOut1(x)))
         return x

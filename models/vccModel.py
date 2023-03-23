@@ -9,7 +9,7 @@ from models.compressorVGG import decodingUnit
 
 
 class VGG(nn.Module):
-    def __init__(self, features, num_classes=1000, init_weights=False, local = False):
+    def __init__(self, features, num_classes, init_weights=False, local = False):
         super(VGG, self).__init__()
         self.encoder = []
         self.decoder = []
@@ -30,6 +30,7 @@ class VGG(nn.Module):
         if init_weights:
             self._initialize_weights()
 
+        #self.prune_filter = []
     '''
     def forward(self, x, local = False):
         x = self.features(x)
@@ -109,12 +110,14 @@ cfg_local = {
     #'A': [64, 'M', 128, 'M'],
     #'E': [64, 64, 'M', 128, 128],
     'A': [64, 'M', 128, 'M', 'CL'],
+    'D': [64, 'CL'],
     'E': [64, 64, 'M', 128, 128, 'CL'],
 }
 cfg_server = {
     #'A': [256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     #'E': ['M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
     'A': ['CS',256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'D': ['CS', 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
@@ -129,6 +132,7 @@ def NeuralNetwork_local(compressionProps,**kwargs):
     return model
 
 def NeuralNetwork_server(compressionProps,**kwargs):
+    #make sure its 128, 64 or something for in-channel correctly
     model = VGG(make_layers(cfg_server['A'], compressionProps, in_channels = 128), **kwargs)     #for prev_channel, it is the last conv layer out channels in local
     return model
 

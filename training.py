@@ -24,7 +24,7 @@ def get_device():
     return device
 
 
-def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, quantizeDtype = torch.float16, realDtype = torch.float32):
+def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, quantizeDtype = torch.float32, realDtype = torch.float32):
     size = len(dataloader.dataset)
     model_local.train()
     model_server.train()
@@ -148,6 +148,9 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             
         #if batch * len(X) > 4800:
         #    return total_loss, total_mask_loss  
+        
+        #if batch * len(X) > 100: #4800:
+        #    return total_loss, total_mask_loss  
 
     a = torch.square(torch.sigmoid(prune_filter.squeeze()))
     print("filter is: ", a)
@@ -238,15 +241,16 @@ def prunetest(dataloader, model_local, model_server, loss_fn, quantizeDtype = to
 compressionProps = {} ### 
 compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
 compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
+num_classes = 10
 
 device = get_device()
-model1 = NeuralNetwork_local(compressionProps).to('cpu')
+model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to('cpu')
 print(device)
-model2 = NeuralNetwork_server(compressionProps)
+model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
 #input_lastLayer = model2.classifier[6].in_features
 #model2.classifier[6] = nn.Linear(input_lastLayer,10)
 model2 = model2.to(device)
-train_dataloader, test_dataloader, classes = load_CIFAR10_dataset(batch_size = 16)   #batch_size
+train_dataloader, test_dataloader, _ = load_CIFAR10_dataset(batch_size = 16)   #batch_size
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
@@ -277,23 +281,33 @@ print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
 
-'''
+
 test(test_dataloader, model1, model2, loss_fn)
 model1_path = "savedModels/model1.pth"
-#torch.save(model1.state_dict(), model1_path)
-#print("Saved PyTorch Model State to {:s}".format(model1_path))
+torch.save(model1.state_dict(), model1_path)
+print("Saved PyTorch Model State to {:s}".format(model1_path))
 model2_path = "savedModels/model2.pth"
-#torch.save(model2.state_dict(), model2_path)
-#print("Saved PyTorch Model State to {:s}".format(model2_path))
+torch.save(model2.state_dict(), model2_path)
+print("Saved PyTorch Model State to {:s}".format(model2_path))
+
+print(model1)
+print(model2)
+
+for k,v in model1.state_dict().items():
+    print(k)
 
 model1.load_state_dict(torch.load(model1_path))
 model2.load_state_dict(torch.load(model2_path))
-'''
+
 test(test_dataloader, model1, model2, loss_fn)
 
-
+print(model1)
+print(model2)
 #optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
 #optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
+for k,v in model1.state_dict().items():
+    print(k)
+
 
 model1.resetPrune()
         
@@ -314,11 +328,35 @@ print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
 
+test(test_dataloader, model1, model2, loss_fn)
+model1_path = "savedModels/modelvgg1_"+str(budget)+".pth"
+torch.save(model1.state_dict(), model1_path)
+print("Saved PyTorch Model State to {:s}".format(model1_path))
+model2_path = "savedModels/modelvgg2_"+str(budget)+".pth"
+torch.save(model2.state_dict(), model2_path)
+print("Saved PyTorch Model State to {:s}".format(model2_path))
+
+print(model1)
+print(model2)
+for k,v in model1.state_dict().items():
+    print(k)
+
+model1.load_state_dict(torch.load(model1_path))
+model2.load_state_dict(torch.load(model2_path))
+
+print("Test loaded")
+test(test_dataloader, model1, model2, loss_fn)
+
+print(model1)
+print(model2)
+for k,v in model1.state_dict().items():
+    print(k)
+
 model1.resetPrune()
 
 #pruning
 epochs = 7
-budget = 4
+budget = 16
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -332,6 +370,21 @@ for t in range(epochs):
 print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
+
+
+test(test_dataloader, model1, model2, loss_fn)
+model1_path = "savedModels/modelvgg1_"+str(budget)+".pth"
+torch.save(model1.state_dict(), model1_path)
+print("Saved PyTorch Model State to {:s}".format(model1_path))
+model2_path = "savedModels/modelvgg2_"+str(budget)+".pth"
+torch.save(model2.state_dict(), model2_path)
+print("Saved PyTorch Model State to {:s}".format(model2_path))
+
+model1.load_state_dict(torch.load(model1_path))
+model2.load_state_dict(torch.load(model2_path))
+
+print("Test loaded")
+test(test_dataloader, model1, model2, loss_fn)
 
 print("errors across: ", avg_errors)
 plt.plot(avg_errors)
@@ -357,11 +410,12 @@ with open(filename, 'w', newline="") as file:
     writer.writerow(["epochs","avg_errors","avg_mask_errors","test_accs"])
     for row in rows:
         writer.writerow(row)
+        
 
 
 '''
 model.to('cpu')
-# Evaluation
+# Evalua
 model.eval()
 x, y = next(iter(test_dataloader))
 with torch.no_grad():
