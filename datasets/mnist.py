@@ -31,4 +31,4 @@ def load_mnist_dataset(batch_size = 64):
     ]
 
 
-    return DataLoader(training_data, batch_size=batch_size), DataLoader(test_data, batch_size=batch_size), classes
+    return DataLoader(training_data, batch_size=batch_size), DataLoader(test_data, batch_size=batch_size), len(training_data.classes)
