@@ -1,7 +1,6 @@
 import random
 from tracemalloc import start
 
-random.seed(57)
 import time
 import numpy as np
 
@@ -19,6 +18,8 @@ from datasets.stl10 import load_STL10_dataset
 import matplotlib.pyplot as plt
 import csv
 from itertools import product
+
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_device():
@@ -252,6 +253,12 @@ def training(dataset,
              prune_1_budget=16, prune_2_budget=4,
              delta=0.001, resolution_comp=1):
     
+    tensorboard = SummaryWriter()
+    tensorboard_title = f"Dataset {dataset}, \
+        Epochs: {{Training: {training_epochs}, Prune_1: {prune_1_epochs}, Prune_2: {prune_2_epochs}}}, \
+        Budget: {{Prune_1: {prune_1_budget}, Prune_2: {prune_2_budget}}}, \
+        Delta: {delta}, Resolution Compression: {resolution_comp}"
+
     compressionProps = {} ### 
     compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = resolution_comp ###layer compression factor, reduce by how many times TBD
@@ -265,7 +272,7 @@ def training(dataset,
     
     
     device = get_device()
-    model1 = NeuralNetwork_local(compressionProps).to(device)
+    model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
     print(device)
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
     #input_lastLayer = model2.classifier[6].in_features
@@ -274,8 +281,8 @@ def training(dataset,
     
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4)
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
     #optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2)
     #optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2)
 
@@ -296,6 +303,7 @@ def training(dataset,
         avg_mask_errors.append(0)
         test_acc, test_error = test(test_dataloader, model1, model2, loss_fn, device=device)
         test_accs.append(test_acc)
+        tensorboard.add_scalar(f"% Test Acc | {tensorboard_title}", test_acc, t)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -343,6 +351,7 @@ def training(dataset,
         avg_mask_errors.append(mask_error)
         test_acc, test_error = prunetest(test_dataloader, model1, model2, loss_fn, device=device)
         test_accs.append(test_acc)
+        tensorboard.add_scalar(f"% Test Acc | {tensorboard_title}", test_acc, t + training_epochs)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -386,6 +395,7 @@ def training(dataset,
         avg_mask_errors.append(mask_error)
         test_acc, test_error = prunetest(test_dataloader, model1, model2, loss_fn, device=device)
         test_accs.append(test_acc)
+        tensorboard.add_scalar(f"% Test Acc | {tensorboard_title}", test_acc, t + training_epochs + prune_1_epochs)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -413,7 +423,7 @@ def training(dataset,
     print("test errors across: ", test_errors)
 
     t = time.time_ns()
-    filename = f'results/{dataset}/prune_data_res_comp_{resolution_comp}.csv'
+    filename = f'results/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}.csv'
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
     with open(filename, 'w', newline="") as file:
@@ -422,6 +432,8 @@ def training(dataset,
         for row in rows:
             writer.writerow(row)
 
+    tensorboard.flush()
+    tensorboard.close()
 
     '''
     model.to(device)
@@ -455,18 +467,24 @@ def compute_nllloss_manual(x,y0):
 
 if __name__ == "__main__":
     
-    datasets = ['STL10', 'CIFAR10', 'CIFAR100']
-    training_epochs = 1
-    prune_1_epochs = 1
-    prune_2_epochs = 1
+    random.seed(57)
+    
+    datasets = [
+                'STL10',
+                'CIFAR10',
+                'CIFAR100',
+                ]
+    training_epochs = [80]
+    prune_1_epochs = [15]
+    prune_2_epochs = [15]
     prune_1_budget = 16
     prune_2_budget = 4
     delta = 0.001
-    resolution_comps = [1,2,3,4]
+    resolution_comps = [1]
 
     
-    for dataset, resolution_comp in product(datasets, resolution_comps):
-        training(dataset, training_epochs=training_epochs,
-                prune_1_epochs=prune_1_epochs, prune_2_epochs=prune_2_epochs,
+    for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs):
+        training(dataset, training_epochs=training_epoch,
+                prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
                 delta=delta, resolution_comp=resolution_comp)

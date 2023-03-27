@@ -1,6 +1,7 @@
 data/
 datas/
 results/
+runs/
 *.csv
 *.ipynb
 *.pyc

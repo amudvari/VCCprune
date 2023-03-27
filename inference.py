@@ -16,9 +16,6 @@ from datasets.cifar10 import load_CIFAR10_dataset
 
 from torchsummary import summary
 
-RESOLUTION_COMPRESSION_FACTOR = 2
-
-
 def get_device():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     #device = "cpu"
@@ -71,7 +68,7 @@ def prunetest(dataloader, model_local, model_server, loss_fn, quantizeDtype = to
 
 compressionProps = {} ### 
 compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
-compressionProps['resolution_compression_factor'] = RESOLUTION_COMPRESSION_FACTOR ###layer compression factor, reduce by how many times TBD
+compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
 num_classes = 10
 
 device = get_device()

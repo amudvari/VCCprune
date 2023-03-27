@@ -12,7 +12,7 @@ def load_STL10_dataset(batch_size = 64):
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        (0.507, 0.487, 0.441), (0.267, 0.256, 0.276)
                     ),
                 ]) 
     )
@@ -24,7 +24,7 @@ def load_STL10_dataset(batch_size = 64):
         transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        (0.507, 0.487, 0.441), (0.267, 0.256, 0.276)
                     ),
                 ])
     )
