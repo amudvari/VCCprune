@@ -86,7 +86,7 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     
     
            
-def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, 
+def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, pruneBackward = True, 
           quantizeDtype = torch.float16, realDtype = torch.float32):
     size = len(dataloader.dataset)
     model_local.train()
@@ -140,7 +140,17 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         
         loss.backward()
         grad_store = serverInput_split_vals.grad
-        split_grad = grad_store.detach().to('cpu')   
+        
+        if pruneBackward:
+            mask_upload = mask.to(device)
+            unsqueezed_mask_upload = torch.unsqueeze(torch.unsqueeze(torch.unsqueeze(mask_upload,0),2),3)
+            masked_split_grad_store = torch.mul(grad_store,unsqueezed_mask_upload)
+            split_grad = masked_split_grad_store.detach().to('cpu')  
+            #print(unsqueezed_mask_upload)   
+            #print(split_grad)    
+            #print(masked_split_val)
+        else:
+            split_grad = grad_store.detach().to('cpu')   
         
         split_vals.backward(split_grad)  
         optimizer_server.step()    
@@ -338,8 +348,8 @@ print("time taken in seconds: ", end_time-start_time)
 
 '''
 #pruning
-epochs = 20 #5
-budget = 16
+epochs = 12 #5
+budget = 4
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -380,7 +390,7 @@ model1.resetdePrune()
 '''
 
 #pruning
-epochs = 25 #5
+epochs = 7 #5
 budget = 128
 start_time = time.time() 
 for t in range(epochs):
@@ -405,7 +415,7 @@ model1.resetdePrune()
 #print(model1.encoder.prune_filter)
 
 #full training
-epochs = 0 #5
+epochs = 4 #5
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
