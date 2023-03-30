@@ -86,7 +86,7 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     
     
            
-def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, 
+def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, pruneBackward = True, 
           quantizeDtype = torch.float16, realDtype = torch.float32):
     size = len(dataloader.dataset)
     model_local.train()
@@ -140,7 +140,17 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         
         loss.backward()
         grad_store = serverInput_split_vals.grad
-        split_grad = grad_store.detach().to('cpu')   
+        
+        if pruneBackward:
+            mask_upload = mask.to(device)
+            unsqueezed_mask_upload = torch.unsqueeze(torch.unsqueeze(torch.unsqueeze(mask_upload,0),2),3)
+            masked_split_grad_store = torch.mul(grad_store,unsqueezed_mask_upload)
+            split_grad = masked_split_grad_store.detach().to('cpu')  
+            #print(unsqueezed_mask_upload)   
+            #print(split_grad)    
+            #print(masked_split_val)
+        else:
+            split_grad = grad_store.detach().to('cpu')   
         
         split_vals.backward(split_grad)  
         optimizer_server.step()    
@@ -259,11 +269,12 @@ def prunetest(dataloader, model_local, model_server, loss_fn, budget, quantizeDt
 compressionProps = {} ### 
 compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
 compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
+num_classes = 10
 
 device = get_device()
-model1 = NeuralNetwork_local(compressionProps).to('cpu')
+model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to('cpu')
 print(device)
-model2 = NeuralNetwork_server(compressionProps)
+model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
 #input_lastLayer = model2.classifier[6].in_features
 #model2.classifier[6] = nn.Linear(input_lastLayer,10)
 model2 = model2.to(device)
@@ -313,13 +324,10 @@ model2.load_state_dict(torch.load(model2_path))
 
 test(test_dataloader, model1, model2, loss_fn)
 '''
-
-#optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
-#optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
-        
+'''        
 #pruning
-epochs = 0
-budget = 2
+epochs = 15
+budget = 16
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -336,13 +344,59 @@ end_time = time.time()
 print("time taken in seconds: ", end_time-start_time)
 
 #print(model1.encoder.prune_filter)
-model1.resetdePrune()
+#model1.resetdePrune()
 
+'''
 #pruning
-epochs = 0 #5
-budget = 32
+epochs = 12 #5
+budget = 4
 start_time = time.time() 
 for t in range(epochs):
+    print(f"Epoch {t+1}\n-------------------------------")
+    avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
+    avg_errors.append(avg_error)
+    avg_mask_errors.append(mask_error)
+    test_acc, test_loss =  prunetest(test_dataloader, model1, model2, loss_fn, budget)
+    test_accs.append(test_acc)
+    test_losses.append(test_loss)
+    print("entire epoch's error: ", avg_error)
+print("Done!")
+end_time = time.time() 
+print("time taken in seconds: ", end_time-start_time)
+'''
+
+
+#test(test_dataloader, model1, model2, loss_fn)
+#model1_path = "savedModels/model1.pth"
+#torch.save(model1.state_dict(), model1_path)
+#print("Saved PyTorch Model State to {:s}".format(model1_path))
+#model2_path = "savedModels/model2.pth"
+#torch.save(model2.state_dict(), model2_path)
+#print("Saved PyTorch Model State to {:s}".format(model2_path))
+
+model1_path = "savedModels/model1.pth"
+model2_path = "savedModels/model2.pth"
+model1.load_state_dict(torch.load(model1_path))
+model2.load_state_dict(torch.load(model2_path))
+test(test_dataloader, model1, model2, loss_fn)
+
+#print(model1.encoder.prune_filter)
+model1.resetdePrune()
+
+###optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
+####optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
+#optimizer1 = torch.optim.SGD(model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+#optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+'''
+
+#pruning
+epochs = 7 #5
+budget = 128
+start_time = time.time() 
+for t in range(epochs):
+    if t >= 3:
+        optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+        optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
     print(f"Epoch {t+1}\n-------------------------------")
     avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
     avg_errors.append(avg_error)
@@ -356,32 +410,12 @@ end_time = time.time()
 print("time taken in seconds: ", end_time-start_time)
 
 #print(model1.encoder.prune_filter)
-model1.resetdePrune()
-
-#pruning
-epochs = 21 #5
-budget = 128
-start_time = time.time() 
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget)
-    avg_errors.append(avg_error)
-    avg_mask_errors.append(mask_error)
-    test_acc, test_loss =  prunetest(test_dataloader, model1, model2, loss_fn, budget)
-    test_accs.append(test_acc)
-    test_losses.append(test_loss)
-    print("entire epoch's error: ", avg_error)
-print("Done!")
-end_time = time.time() 
-print("time taken in seconds: ", end_time-start_time)
-
-print(model1.encoder.prune_filter)
 model1.resetdePrune()
 
 #print(model1.encoder.prune_filter)
 
 #full training
-epochs = 0 #5
+epochs = 4 #5
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -397,7 +431,7 @@ print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
 
-print(model1.encoder.prune_filter)
+#print(model1.encoder.prune_filter)
 
 print("errors across: ", avg_errors)
 plt.plot(avg_errors)
