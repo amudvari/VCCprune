@@ -14,6 +14,7 @@ from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.cifar100 import load_CIFAR100_dataset
 from datasets.stl10 import load_STL10_dataset
+from datasets.imagenet100 import load_Imagenet100_dataset
 
 import matplotlib.pyplot as plt
 import csv
@@ -147,7 +148,7 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             print(f"Real loss: {realLoss:>7f}  [{current:>5d}/{size:>5d}]")
             #a = torch.square(torch.sigmoid(prune_filter.squeeze()))
             #print("filter is: ", a)
-            print("masks allowed: ",mask_allowed)
+            # print("masks allowed: ",mask_allowed)
             total_loss += realLoss
             total_mask_loss += loss
         else:
@@ -161,7 +162,7 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         #    return total_loss, total_mask_loss  
 
     a = torch.square(torch.sigmoid(prune_filter.squeeze()))
-    print("filter is: ", a)
+    # print("filter is: ", a)
     return total_loss, total_mask_loss  
 
 
@@ -269,6 +270,8 @@ def training(dataset,
         train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
     elif dataset == "STL10":
         train_dataloader, test_dataloader, num_classes = load_STL10_dataset(batch_size = 16)   #batch_size
+    elif dataset == "Imagenet100":
+        train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)  # batch_size
     
     
     device = get_device()
@@ -319,23 +322,23 @@ def training(dataset,
     torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    print(model1)
-    print(model2)
+    # print(model1)
+    # print(model2)
 
-    for k,v in model1.state_dict().items():
-        print(k)
+    # for k,v in model1.state_dict().items():
+    #     print(k)
 
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
-    print(model1)
-    print(model2)
+    # print(model1)
+    # print(model2)
     #optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
     #optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
-    for k,v in model1.state_dict().items():
-        print(k)
+    # for k,v in model1.state_dict().items():
+    #     print(k)
 
 
     model1.resetPrune()
@@ -366,10 +369,10 @@ def training(dataset,
     torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    print(model1)
-    print(model2)
-    for k,v in model1.state_dict().items():
-        print(k)
+    # print(model1)
+    # print(model2)
+    # for k,v in model1.state_dict().items():
+    #     print(k)
 
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
@@ -377,10 +380,10 @@ def training(dataset,
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
-    print(model1)
-    print(model2)
-    for k,v in model1.state_dict().items():
-        print(k)
+    # print(model1)
+    # print(model2)
+    # for k,v in model1.state_dict().items():
+    #     print(k)
 
     model1.resetPrune()
 
@@ -470,11 +473,12 @@ if __name__ == "__main__":
     random.seed(57)
     
     datasets = [
-                'STL10',
-                'CIFAR10',
-                'CIFAR100',
+                # 'STL10',
+                # 'CIFAR10',
+                # 'CIFAR100',
+                'Imagenet100',
                 ]
-    training_epochs = [80]
+    training_epochs = [70]
     prune_1_epochs = [15]
     prune_2_epochs = [15]
     prune_1_budget = 16
@@ -483,7 +487,8 @@ if __name__ == "__main__":
     resolution_comps = [1]
 
     
-    for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs):
+    for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch \
+        in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs):
         training(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
