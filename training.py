@@ -14,17 +14,21 @@ from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.cifar100 import load_CIFAR100_dataset
 from datasets.stl10 import load_STL10_dataset
+from datasets.imagenet100 import load_Imagenet100_dataset
 
 import matplotlib.pyplot as plt
 import csv
 from itertools import product
 
 from torch.utils.tensorboard import SummaryWriter
+import datetime
 
 
-def get_device():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    #device = "cpu"
+def get_device(dev: str = None):
+    if dev:
+        device = dev
+    else:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using {device} device")
     return device
 
@@ -71,8 +75,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
         else:
             total_loss += loss.item()    
             
-        #if batch * len(X) > 100: #4800:
-        #    return total_loss
+        # if batch * len(X) > 1: #4800:
+        #    break
            
             
     return total_loss     
@@ -251,9 +255,12 @@ def prunetest(dataloader, model_local, model_server, loss_fn,
 def training(dataset,
              training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
              prune_1_budget=16, prune_2_budget=4,
-             delta=0.001, resolution_comp=1):
+             delta=0.001, resolution_comp=1, device="cuda"):
     
-    tensorboard = SummaryWriter()
+    tensorboard = SummaryWriter(
+        log_dir=f"runs/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
+/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}"
+    )
     tensorboard_title = f"Dataset {dataset}, \
         Epochs: {{Training: {training_epochs}, Prune_1: {prune_1_epochs}, Prune_2: {prune_2_epochs}}}, \
         Budget: {{Prune_1: {prune_1_budget}, Prune_2: {prune_2_budget}}}, \
@@ -269,9 +276,11 @@ def training(dataset,
         train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
     elif dataset == "STL10":
         train_dataloader, test_dataloader, num_classes = load_STL10_dataset(batch_size = 16)   #batch_size
+    elif dataset == "Imagenet100":
+        train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)  # batch_size
     
     
-    device = get_device()
+    device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
     print(device)
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
@@ -312,30 +321,30 @@ def training(dataset,
 
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
-    model1_path = "savedModels/model1.pth"
-    torch.save(model1.state_dict(), model1_path)
-    print("Saved PyTorch Model State to {:s}".format(model1_path))
-    model2_path = "savedModels/model2.pth"
-    torch.save(model2.state_dict(), model2_path)
-    print("Saved PyTorch Model State to {:s}".format(model2_path))
+    model1_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/model1.pth"
+    # torch.save(model1.state_dict(), model1_path)
+    # print("Saved PyTorch Model State to {:s}".format(model1_path))
+    model2_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/model2.pth"
+    # torch.save(model2.state_dict(), model2_path)
+    # print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    print(model1)
-    print(model2)
-
-    for k,v in model1.state_dict().items():
-        print(k)
+    for k, v in model1.state_dict().items():
+        if k == 'prune_filter':
+            print("prune_filter is:")
+            print(v)
+            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
-    print(model1)
-    print(model2)
-    #optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
-    #optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3, momentum=0.0, weight_decay=5e-4)
-    for k,v in model1.state_dict().items():
-        print(k)
+
+    for k, v in model1.state_dict().items():
+        if k == 'prune_filter':
+            print("prune_filter is:")
+            print(v)
+            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
 
     model1.resetPrune()
@@ -352,6 +361,7 @@ def training(dataset,
         test_acc, test_error = prunetest(test_dataloader, model1, model2, loss_fn, device=device)
         test_accs.append(test_acc)
         tensorboard.add_scalar(f"% Test Acc | {tensorboard_title}", test_acc, t + training_epochs)
+        tensorboard.add_scalar(f"% Mask Error | {tensorboard_title}", mask_error, t + training_epochs)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -359,17 +369,19 @@ def training(dataset,
     print("time taken in seconds: ", end_time-start_time)
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
-    model1_path = "savedModels/modelvgg1_"+str(budget)+".pth"
+    model1_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/modelvgg1_"+str(budget)+".pth"
     torch.save(model1.state_dict(), model1_path)
     print("Saved PyTorch Model State to {:s}".format(model1_path))
-    model2_path = "savedModels/modelvgg2_"+str(budget)+".pth"
+    model2_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/modelvgg2_"+str(budget)+".pth"
     torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    print(model1)
-    print(model2)
-    for k,v in model1.state_dict().items():
-        print(k)
+
+    for k, v in model1.state_dict().items():
+        if k == 'prune_filter':
+            print("prune_filter is:")
+            print(v)
+            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
@@ -377,10 +389,11 @@ def training(dataset,
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
-    print(model1)
-    print(model2)
-    for k,v in model1.state_dict().items():
-        print(k)
+    for k, v in model1.state_dict().items():
+        if k == 'prune_filter':
+            print("prune_filter is:")
+            print(v)
+            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
     model1.resetPrune()
 
@@ -404,10 +417,10 @@ def training(dataset,
 
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
-    model1_path = "savedModels/modelvgg1_"+str(budget)+".pth"
+    model1_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/modelvgg1_"+str(budget)+".pth"
     torch.save(model1.state_dict(), model1_path)
     print("Saved PyTorch Model State to {:s}".format(model1_path))
-    model2_path = "savedModels/modelvgg2_"+str(budget)+".pth"
+    model2_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/modelvgg2_"+str(budget)+".pth"
     torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
@@ -423,7 +436,7 @@ def training(dataset,
     print("test errors across: ", test_errors)
 
     t = time.time_ns()
-    filename = f'results/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}.csv'
+    filename = f'results/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
     with open(filename, 'w', newline="") as file:
@@ -470,21 +483,41 @@ if __name__ == "__main__":
     random.seed(57)
     
     datasets = [
-                'STL10',
-                'CIFAR10',
-                'CIFAR100',
+                # 'STL10',
+                # 'CIFAR10',
+                # 'CIFAR100',
+                'Imagenet100',
                 ]
-    training_epochs = [80]
+    training_epochs = [1]
     prune_1_epochs = [15]
     prune_2_epochs = [15]
-    prune_1_budget = 16
-    prune_2_budget = 4
-    delta = 0.001
+    prune_1_budgets = [16]
+    prune_2_budgets = [4]
+    deltas = [0.001]
     resolution_comps = [1]
+    device = "cuda:0"
 
     
-    for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs):
+    for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch, \
+                                         prune_1_budget, prune_2_budget, delta  \
+        in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs,
+                   prune_1_budgets, prune_2_budgets, deltas):
+        print(f"""
+              ---------------------------
+              Parameters
+              ---------------------------
+              Dataset: {dataset},
+              Resolution Compression Factor: {resolution_comp},
+              Training Epochs: {training_epoch},
+              Prune 1 Epochs: {prune_1_epoch},
+              Prune 2 Epochs: {prune_2_epoch},
+              Prune 1 Budget: {prune_1_budget},
+              Prune 2 Budget: {prune_2_budget},
+              Delta: {delta}
+              ---------------------------
+              """)
+
         training(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
-                delta=delta, resolution_comp=resolution_comp)
+                delta=delta, resolution_comp=resolution_comp, device=device)
