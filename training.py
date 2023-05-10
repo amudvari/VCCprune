@@ -255,10 +255,10 @@ def prunetest(dataloader, model_local, model_server, loss_fn,
 def training(dataset,
              training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
              prune_1_budget=16, prune_2_budget=4,
-             delta=0.001, resolution_comp=1, device="cuda"):
+             delta=0.001, resolution_comp=1, device="cuda", threshold=0.9):
     
     tensorboard = SummaryWriter(
-        log_dir=f"runs/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
+        log_dir=f"runs/pruning/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
 /{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}"
     )
     tensorboard_title = f"Dataset {dataset}, \
@@ -347,7 +347,7 @@ def training(dataset,
             print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
 
-    model1.resetPrune()
+    model1.resetPrune(threshold=threshold)
             
     #pruning
     epochs = prune_1_epochs
@@ -395,7 +395,7 @@ def training(dataset,
             print(v)
             print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
-    model1.resetPrune()
+    model1.resetPrune(threshold=threshold)
 
     #pruning
     epochs = prune_2_epochs
@@ -436,7 +436,7 @@ def training(dataset,
     print("test errors across: ", test_errors)
 
     t = time.time_ns()
-    filename = f'results/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}_{delta}.csv'
+    filename = f'results/pruning/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
     with open(filename, 'w', newline="") as file:
@@ -493,15 +493,16 @@ if __name__ == "__main__":
     prune_2_epochs = [15]
     prune_1_budgets = [16]
     prune_2_budgets = [4]
-    deltas = [0.001]
+    deltas = [0.00075]
     resolution_comps = [1]
     device = "cuda:0"
+    thresholds = [0.5, 0.75]
 
     
     for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch, \
-                                         prune_1_budget, prune_2_budget, delta  \
+                                         prune_1_budget, prune_2_budget, delta, threshold  \
         in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs,
-                   prune_1_budgets, prune_2_budgets, deltas):
+                   prune_1_budgets, prune_2_budgets, deltas, thresholds):
         print(f"""
               ---------------------------
               Parameters
@@ -520,4 +521,4 @@ if __name__ == "__main__":
         training(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
-                delta=delta, resolution_comp=resolution_comp, device=device)
+                delta=delta, resolution_comp=resolution_comp, device=device, threshold=threshold)
