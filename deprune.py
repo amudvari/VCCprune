@@ -75,7 +75,9 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     
     prune_filter_squeezed = prune_filter.squeeze()
-    prune_filter_control = torch.exp( 0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_1 = torch.exp( 0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_2 = torch.exp( -0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control = prune_filter_control_1 + prune_filter_control_2 
     #(( (sum(prune_filter_squeezed)-budget) > 0 ).float() * 10000 ).squeeze()
     #print(prune_filter)
     #print(prune_filter_control)
@@ -347,8 +349,12 @@ print("time taken in seconds: ", end_time-start_time)
 #model1.resetdePrune()
 
 '''
+
+#optimizer1 = torch.optim.SGD(model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+#optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+
 #pruning
-epochs = 12 #5
+epochs = 15 #5
 budget = 4
 start_time = time.time() 
 for t in range(epochs):
@@ -385,12 +391,14 @@ model1.resetdePrune()
 
 ###optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
 ####optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
-#optimizer1 = torch.optim.SGD(model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
-#optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
 '''
+model1.resetdePrune()
+optimizer1 = torch.optim.SGD(model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+
 
 #pruning
-epochs = 7 #5
+epochs = 10 #5
 budget = 128
 start_time = time.time() 
 for t in range(epochs):
@@ -415,7 +423,7 @@ model1.resetdePrune()
 #print(model1.encoder.prune_filter)
 
 #full training
-epochs = 4 #5
+epochs = 0 #5
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")

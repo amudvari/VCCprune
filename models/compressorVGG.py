@@ -73,7 +73,7 @@ class encodingUnit(nn.Module):
         count = 0
         for entry in self.prune_filter[0]:
             if entry[0] < 0.9: 
-                self.prune_filter[0][count] = random.uniform(0,self.scaler)
+                self.prune_filter[0][count] = random.uniform(0,1)
             else:
                 self.prune_filter[0][count] = self.scaler 
             count += 1
