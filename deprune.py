@@ -398,7 +398,7 @@ optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight
 
 
 #pruning
-epochs = 10 #5
+epochs = 7 #5
 budget = 128
 start_time = time.time() 
 for t in range(epochs):
