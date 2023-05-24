@@ -66,11 +66,11 @@ class VGG(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
                 
-    def resetPrune(self):
-        self.encoder.resetPrune()
+    def resetPrune(self, threshold=0.9):
+        self.encoder.resetPrune(threshold=threshold)
         
-    def resetdePrune(self):
-        self.encoder.resetdePrune()
+    def resetdePrune(self, rightSideValue=3):
+        self.encoder.resetdePrune(rightSideValue=rightSideValue)
 
 def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
     layers = []  
