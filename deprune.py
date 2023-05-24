@@ -130,6 +130,8 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to(device)
         masknp = mask.to('cpu').detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
+        # TODO fix
+        # partitioned_gpu = partitioned.totorch.to(device)
         mask_allowed = 0
         for entry in range(len(mask)):
             if mask[entry] < partitioned: 
@@ -188,9 +190,9 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             total_loss += realLoss.item()
             total_mask_loss += loss.item()
             
-        if batch == 1:
-            a = torch.square(torch.sigmoid(prune_filter.squeeze()))
-            print("filter on first batch is: ", a)
+        # if batch == 1:
+        #     a = torch.square(torch.sigmoid(prune_filter.squeeze()))
+        #     print("filter on first batch is: ", a)
             
         #if batch * len(X) > 4800:
         #    return total_loss, total_mask_loss  
@@ -476,11 +478,11 @@ def compute_nllloss_manual(x,y0):
 if __name__ == "__main__":
 
     # Python random seed
-    random.seed(57)
+    random.seed(56)
     # PyTorch random seed
-    torch.manual_seed(57)
+    torch.manual_seed(56)
     # NumPy random seed
-    np.random.seed(57)
+    np.random.seed(56)
 
     datasets = [
         # 'STL10',
@@ -488,15 +490,15 @@ if __name__ == "__main__":
         # 'CIFAR100',
         'Imagenet100',
     ]
-    prune_1_epochs = [25]
-    prune_2_epochs = [15]
+    prune_1_epochs = [45]
+    prune_2_epochs = [0]
     training_epochs = [0]
-    prune_1_budgets = [4]
-    prune_2_budgets = [128]
+    prune_1_budgets = [128]
+    prune_2_budgets = [0]
     deltas = [0.1]  
     resolution_comps = [1]
-    device = "cuda:0"
-    rightSideValues = [3,5]
+    device = "cuda:1"
+    rightSideValues = [3]
 
     for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch, \
         prune_1_budget, prune_2_budget, delta, rightSideValue  \
