@@ -278,7 +278,8 @@ def training(dataset,
              training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
              prune_1_budget=16, prune_2_budget=4,
              delta=0.001, resolution_comp=1, device="cuda", threshold=0.9,
-             lr_boost=False, mask_filtering_method="partition"):
+             lr_boost=False, mask_filtering_method="partition",
+             lr_boost_epoch=3, lr_boost_lr=5e-2):
     
     tensorboard_filename = f"runs/pruning/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
 /{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}"
@@ -295,6 +296,8 @@ def training(dataset,
          "threshold": threshold,
          "lr_boost": lr_boost,
          "mask_filtering_method": mask_filtering_method,
+         "lr_boost_epochs": lr_boost_epoch,
+         "lr_boost_lr": lr_boost_lr,
         }
     with open(f"{tensorboard_filename}/parameters.json", "w") as f:
         json.dump(d, f)
@@ -459,11 +462,11 @@ def training(dataset,
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         if lr_boost:
-            if t >= 3:
+            if t >= lr_boost_epoch:
                 optimizer1 = torch.optim.SGD(
-                    model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+                    model1.parameters(),  lr=lr_boost_lr, momentum=0.0, weight_decay=5e-4)
                 optimizer2 = torch.optim.SGD(
-                    model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+                    model2.parameters(),  lr=lr_boost_lr, momentum=0.0, weight_decay=5e-4)
         avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2,
                                        budget, delta=delta, device=device, mask_filtering_method="partition")
         avg_errors.append(avg_error)
@@ -553,22 +556,26 @@ if __name__ == "__main__":
         # 'Imagenet100',
     ]
     training_epochs = [30]
-    prune_1_epochs = [10]
-    prune_2_epochs = [10]
+    prune_1_epochs = [15]
+    prune_2_epochs = [20]
     prune_1_budgets = [8]
-    prune_2_budgets = [4]
+    prune_2_budgets = [2]
     deltas = [0.01]
-    resolution_comps = [3]
+    resolution_comps = [1]
     device = "cuda:0"
     thresholds = [0.1]
     lr_boosts = [True]
-    mask_filtering_methods = ["no-partition"]
+    mask_filtering_methods = ["partition"]
+    lr_boost_epochs = [3]
+    lr_boost_lrs = [5e-3]
 
     
     for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch, \
-            prune_1_budget, prune_2_budget, delta, threshold, lr_boost, mask_filtering_method \
+            prune_1_budget, prune_2_budget, delta, threshold, lr_boost, mask_filtering_method, \
+            lr_boost_epoch, lr_boost_lr \
         in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs,
-                   prune_1_budgets, prune_2_budgets, deltas, thresholds, lr_boosts, mask_filtering_methods):
+                   prune_1_budgets, prune_2_budgets, deltas, thresholds, lr_boosts, mask_filtering_methods,
+                   lr_boost_epochs, lr_boost_lrs):
         print(f"""
               ---------------------------
               Parameters
@@ -582,6 +589,8 @@ if __name__ == "__main__":
               Prune 2 Budget: {prune_2_budget},
               Delta: {delta},
               LR_Boost: {lr_boost},
+              LR_Boost_Epochs: {lr_boost_epoch},
+              LR_Boost_lrs: {lr_boost_lrs},
               Threshold: {threshold},
               Mask Filtering Method: {mask_filtering_method}
               Device: {device}
@@ -595,4 +604,5 @@ if __name__ == "__main__":
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
                 delta=delta, resolution_comp=resolution_comp, device=device, threshold=threshold,
-                lr_boost=lr_boost, mask_filtering_method=mask_filtering_method)
+                lr_boost=lr_boost, mask_filtering_method=mask_filtering_method,
+                lr_boost_epoch=lr_boost_epoch, lr_boost_lr=lr_boost_lr)
