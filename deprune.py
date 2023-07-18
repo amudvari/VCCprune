@@ -48,7 +48,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         X, y = X.to(device), y.to(device)
 
         # Compute prediction error
-        split_vals, prune_filter = model_local(X, local=True, prune=False)
+        #split_vals, prune_filter = model_local(X, local=True, prune=False)     ###############################
+        split_vals = model_local(X, local=True, prune=False) 
         detached_split_vals = split_vals.detach()
         quantized_split_vals = detached_split_vals.to(quantizeDtype)
         transfererd_split_vals = quantized_split_vals.detach().to(device)
@@ -119,7 +120,7 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         split_vals, prune_filter = model_local(X, local = True, prune=True)
         detached_split_vals = split_vals.detach()
         quantized_split_vals = detached_split_vals.to(quantizeDtype)
-        
+        #print(prune_filter)
         #mask_allowed = 0
         #mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         #for entry in range(len(mask)):
@@ -220,7 +221,8 @@ def test(dataloader, model_local, model_server, loss_fn, quantizeDtype = torch.f
             X, y = X.to(device), y.to(device)
 
             # Compute prediction error
-            split_vals, prune_filter = model_local(X, local=True, prune=False)
+            #split_vals, prune_filter = model_local(X, local=True, prune=False)           #######################
+            split_vals = model_local(X, local=True, prune=False)
             detached_split_vals = split_vals.detach()
             quantized_split_vals = detached_split_vals.to(quantizeDtype)
             transfererd_split_vals = quantized_split_vals.detach().to(device)
@@ -322,7 +324,6 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
     elif dataset == "Imagenet100":
         train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)  # batch_size
     
-
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
     print(device)
@@ -395,6 +396,9 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
 
     #print(model1.encoder.prune_filter)
     model1.resetdePrune(rightSideValue=rightSideValue)
+
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
 
     #print(model1.encoder.prune_filter)
 
