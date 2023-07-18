@@ -35,7 +35,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         X, y = X.to('cpu'), y.to(device)
 
         # Compute prediction error
-        split_vals, prune_filter = model_local(X, local=True, prune=False)
+        #split_vals, prune_filter = model_local(X, local=True, prune=False)     ###############################
+        split_vals = model_local(X, local=True, prune=False) 
         detached_split_vals = split_vals.detach()
         quantized_split_vals = detached_split_vals.to(quantizeDtype)
         transfererd_split_vals = quantized_split_vals.detach().to(device)
@@ -75,8 +76,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     
     prune_filter_squeezed = prune_filter.squeeze()
-    prune_filter_control_1 = torch.exp( 0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
-    prune_filter_control_2 = torch.exp( -0.1 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_1 = torch.exp( 0.01 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_2 = torch.exp( -0.01 * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
     prune_filter_control = prune_filter_control_1 + prune_filter_control_2 
     #(( (sum(prune_filter_squeezed)-budget) > 0 ).float() * 10000 ).squeeze()
     #print(prune_filter)
@@ -104,7 +105,7 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         split_vals, prune_filter = model_local(X, local = True, prune=True)
         detached_split_vals = split_vals.detach()
         quantized_split_vals = detached_split_vals.to(quantizeDtype)
-        
+        #print(prune_filter)
         #mask_allowed = 0
         #mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         #for entry in range(len(mask)):
@@ -196,7 +197,8 @@ def test(dataloader, model_local, model_server, loss_fn, quantizeDtype = torch.f
             X, y = X.to('cpu'), y.to(device)
 
             # Compute prediction error
-            split_vals, prune_filter = model_local(X, local=True, prune=False)
+            #split_vals, prune_filter = model_local(X, local=True, prune=False)           #######################
+            split_vals = model_local(X, local=True, prune=False)
             detached_split_vals = split_vals.detach()
             quantized_split_vals = detached_split_vals.to(quantizeDtype)
             transfererd_split_vals = quantized_split_vals.detach().to(device)
@@ -269,8 +271,8 @@ def prunetest(dataloader, model_local, model_server, loss_fn, budget, quantizeDt
     
 
 compressionProps = {} ### 
-compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
-compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
+compressionProps['feature_compression_factor'] = 1 ### layer compression factor, compress by how many times
+compressionProps['resolution_compression_factor'] = 1 ###resolution compression factor, reduce by how many times TBD
 num_classes = 10
 
 device = get_device()
@@ -354,7 +356,7 @@ print("time taken in seconds: ", end_time-start_time)
 #optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
 
 #pruning
-epochs = 15 #5
+epochs = 22 #5
 budget = 4
 start_time = time.time() 
 for t in range(epochs):
@@ -392,13 +394,13 @@ model1.resetdePrune()
 ###optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
 ####optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.8e-2, momentum=0.0, weight_decay=5e-4)
 '''
-model1.resetdePrune()
+#model1.resetdePrune()
 optimizer1 = torch.optim.SGD(model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
 optimizer2 = torch.optim.SGD(model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
 
 
 #pruning
-epochs = 7 #5
+epochs = 0 #5
 budget = 128
 start_time = time.time() 
 for t in range(epochs):
@@ -418,9 +420,12 @@ end_time = time.time()
 print("time taken in seconds: ", end_time-start_time)
 
 #print(model1.encoder.prune_filter)
-model1.resetdePrune()
+#model1.resetdePrune()
 
 #print(model1.encoder.prune_filter)
+
+optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
 
 #full training
 epochs = 0 #5
@@ -491,3 +496,21 @@ def compute_nllloss_manual(x,y0):
         loss = loss + x1[class_index] # other class terms, ignore.
     loss = - loss/n_batch
     return loss
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
