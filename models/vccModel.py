@@ -69,11 +69,11 @@ class VGG(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
                 
-    def resetPrune(self):
-        self.encoder.resetPrune()
+    def resetPrune(self, threshold=0.9):
+        self.encoder.resetPrune(threshold=threshold)
         
-    def resetdePrune(self):
-        self.encoder.resetdePrune()
+    def resetdePrune(self, rightSideValue=3):
+        self.encoder.resetdePrune(rightSideValue=rightSideValue)
 
 def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
     layers = []  
@@ -118,6 +118,7 @@ cfg_local = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 'CL'],
     'D': [64, 'CL'],
     'E': [64, 64, 'M', 128, 128, 'CL'],
+    'D': [64, 64, 'M', 128, 128, 'CL'],
 }
 cfg_server = {
     #'A': [256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],                   ##########################################
@@ -128,6 +129,7 @@ cfg_server = {
     'A': ['CS',512, 'M', 512, 512, 'M'],
     'D': ['CS', 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    'D': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
 

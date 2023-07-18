@@ -2,29 +2,29 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision import transforms
 
-def load_CIFAR10_dataset(batch_size = 64):
-    training_data = datasets.CIFAR10(
+def load_STL10_dataset(batch_size = 64):
+    training_data = datasets.STL10(
         root="data",
-        train=True,
+        split="train",
         download=True,
         transform= transforms.Compose([
-                    transforms.RandomCrop(32, padding=4),
+                    transforms.RandomCrop(96, padding=4),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        (0.507, 0.487, 0.441), (0.267, 0.256, 0.276)
                     ),
                 ]) 
     )
 
-    test_data = datasets.CIFAR10(
+    test_data = datasets.STL10(
         root="data",
-        train=False,
+        split="test",
         download=True,
         transform=transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        (0.507, 0.487, 0.441), (0.267, 0.256, 0.276)
                     ),
                 ])
     )

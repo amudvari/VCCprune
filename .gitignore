@@ -1,6 +1,10 @@
 data/
 datas/
+results/
+runs/
 *.csv
 *.ipynb
 *.pyc
 *.pth
+*jpg
+.vscode

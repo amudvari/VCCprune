@@ -56,24 +56,24 @@ class encodingUnit(nn.Module):
             x = torch.mul(x,filter_relu) 
             return x, self.prune_filter
         
-    def resetPrune(self):
+    def resetPrune(self, threshold=0.9, rightSideValue=3):
         self.prune_filter.requires_grad_(False)
         count = 0
         for entry in self.prune_filter[0]:
-            if entry[0] > 0.9: 
-                self.prune_filter[0][count] = random.uniform(0,self.scaler)
+            if entry[0] > threshold: 
+                self.prune_filter[0][count] = random.uniform(0,rightSideValue)
             else:
                 self.prune_filter[0][count] = -self.scaler 
             count += 1
         self.prune_filter.requires_grad_(True)
         
         
-    def resetdePrune(self):
+    def resetdePrune(self, rightSideValue=3):
         self.prune_filter.requires_grad_(False)
         count = 0
         for entry in self.prune_filter[0]:
             if entry[0] < 0.9: 
-                self.prune_filter[0][count] = random.uniform(0,1)
+                self.prune_filter[0][count] = random.uniform(0,rightSideValue)
             else:
                 self.prune_filter[0][count] = self.scaler 
             count += 1

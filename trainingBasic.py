@@ -62,8 +62,6 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             total_loss += loss.item()
         #if batch * len(X) > 12800:
         #    return total_loss
-            
-        
     return total_loss     
          
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
@@ -78,7 +76,7 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000):
     diff = entropyLoss + epsilon * prune_filter_control_exp
     return diff
     
-           
+
 def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, 
           quantizeDtype = torch.float16, realDtype = torch.float32):
     size = len(dataloader.dataset)
@@ -132,12 +130,15 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
             print(f"Real loss: {realLoss:>7f}  [{current:>5d}/{size:>5d}]")
             a = torch.square(torch.sigmoid(prune_filter.squeeze()))
             print("filter is: ", a)
-            
+            total_loss += realLoss
+            total_mask_loss += loss
+        else:
+            total_loss += realLoss.item()
+            total_mask_loss += loss.item()
+
         #if batch * len(X) > 12800:
         #    return total_loss, total_mask_loss  
 
-        total_loss += realLoss
-        total_mask_loss += loss
     return total_loss, total_mask_loss  
 
 
@@ -209,7 +210,7 @@ avg_errors = []
 avg_mask_errors = []
 
 # Training
-epochs = 10
+epochs = 1
 start_time = time.time() 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
@@ -226,7 +227,7 @@ optimizer1 = torch.optim.SGD(model1.parameters(), lr=0.3e-3)
 optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.3e-3)
     
 #pruning
-epochs = 5
+epochs = 1
 budget = 6
 start_time = time.time() 
 for t in range(epochs):
@@ -240,10 +241,10 @@ print("Done!")
 end_time = time.time() 
 print("time taken in seconds: ", end_time-start_time)
 
-model1.resetDePrune()
+model1.resetPrune()
 
 #pruning
-epochs = 5
+epochs = 1
 budget = 3
 start_time = time.time() 
 for t in range(epochs):
@@ -259,11 +260,13 @@ print("time taken in seconds: ", end_time-start_time)
 
 print("errors across: ", avg_errors)
 plt.plot(avg_errors)
-plt.show()
+plt.savefig("avg_errors.jpg")
+print("plot saved at 'avg_errors.jpg")
 
 print("mask errors across: ", avg_mask_errors)
 plt.plot(avg_mask_errors)
-plt.show()
+plt.savefig("avg_mask_errors.jpg")
+print("plot saved at 'avg_mask_errors.jpg")
 
 
 # torch.save(model.state_dict(), model_path)
