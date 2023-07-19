@@ -1,6 +1,4 @@
 import random
-from tracemalloc import start
-
 import time
 import numpy as np
 
@@ -8,7 +6,6 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from models.vccModel import NeuralNetwork
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
@@ -16,7 +13,6 @@ from datasets.cifar100 import load_CIFAR100_dataset
 from datasets.stl10 import load_STL10_dataset
 from datasets.imagenet100 import load_Imagenet100_dataset
 
-import matplotlib.pyplot as plt
 import csv
 from itertools import product
 
@@ -75,10 +71,6 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
             total_loss += loss
         else:
             total_loss += loss.item()    
-            
-        # if batch * len(X) > 1: #4800:
-        #    break
-           
             
     return total_loss     
          
@@ -157,23 +149,14 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
         if batch % 1000 == 0 or batch < 10:
             loss, current = loss.item(), batch * len(X)
             realLoss= realLoss.item()
-            #print(masked_split_val[0,:])
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
             print(f"Real loss: {realLoss:>7f}  [{current:>5d}/{size:>5d}]")
-            #a = torch.square(torch.sigmoid(prune_filter.squeeze()))
-            #print("filter is: ", a)
             print("masks allowed: ",mask_allowed)
             total_loss += realLoss
             total_mask_loss += loss
         else:
             total_loss += realLoss.item()
             total_mask_loss += loss.item()
-            
-        #if batch * len(X) > 4800:
-        #    return total_loss, total_mask_loss  
-        
-        #if batch * len(X) > 100: #4800:
-        #    return total_loss, total_mask_loss  
 
     a = torch.square(torch.sigmoid(prune_filter.squeeze()))
     print("filter is: ", a)
@@ -184,16 +167,12 @@ def test(dataloader, model_local, model_server, loss_fn,
          quantizeDtype = torch.float16, realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    #model.eval()
     model_local.eval()
     model_server.eval()
     test_loss, correct = 0, 0
     device = kwargs['device']
     with torch.no_grad():
-        for X, y in dataloader:
-            #X, y = X.to(device), y.to(device)
-            #pred = model(X)
-            
+        for X, y in dataloader:            
             X, y = X.to(device), y.to(device)
 
             # Compute prediction error
@@ -205,9 +184,7 @@ def test(dataloader, model_local, model_server, loss_fn,
             dequantized_split_vals = transfererd_split_vals.detach().to(realDtype)
             serverInput_split_vals = Variable(dequantized_split_vals, requires_grad=True)
             pred = model_server(serverInput_split_vals)
-            #loss = loss_fn(pred, y)
-            
-            
+
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
@@ -228,9 +205,6 @@ def prunetest(dataloader, model_local, model_server, loss_fn, budget,
     device = kwargs['device']
     with torch.no_grad():
         for X, y in dataloader:
-            #X, y = X.to(device), y.to(device)
-            #pred = model(X)
-            
             X, y = X.to(device), y.to(device)
 
             # Compute prediction error
@@ -263,9 +237,7 @@ def prunetest(dataloader, model_local, model_server, loss_fn, budget,
             dequantized_split_vals = transfererd_split_vals.detach().to(realDtype)
             serverInput_split_vals = Variable(dequantized_split_vals, requires_grad=True)
             pred = model_server(serverInput_split_vals)
-            #loss = loss_fn(pred, y)
-            
-            
+
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
@@ -319,23 +291,16 @@ def training(dataset,
         train_dataloader, test_dataloader, num_classes = load_STL10_dataset(batch_size = 16)   #batch_size
     elif dataset == "Imagenet100":
         train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)  # batch_size
-    
-    
+
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
     print(device)
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
-    #input_lastLayer = model2.classifier[6].in_features
-    #model2.classifier[6] = nn.Linear(input_lastLayer,10)
     model2 = model2.to(device)
-    
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4)
     optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
-    #optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2)
-    #optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2)
-
 
     #error track: 
     avg_errors = []
@@ -369,23 +334,11 @@ def training(dataset,
     torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    for k, v in model1.state_dict().items():
-        if k == 'prune_filter':
-            print("prune_filter is:")
-            print(v)
-            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
-
-
-    for k, v in model1.state_dict().items():
-        if k == 'prune_filter':
-            print("prune_filter is:")
-            print(v)
-            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
 
     # model1.resetPrune(threshold=threshold)
@@ -429,23 +382,11 @@ def training(dataset,
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
 
-    for k, v in model1.state_dict().items():
-        if k == 'prune_filter':
-            print("prune_filter is:")
-            print(v)
-            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
-
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
 
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
-
-    for k, v in model1.state_dict().items():
-        if k == 'prune_filter':
-            print("prune_filter is:")
-            print(v)
-            print(f"number of filters above 0.1 is {len(v[v>0.1])}")
 
     # model1.resetPrune(threshold=threshold)
     if lr_boost:
@@ -515,35 +456,6 @@ def training(dataset,
     tensorboard.flush()
     tensorboard.close()
 
-    '''
-    model.to(device)
-    # Evaluation
-    model.eval()
-    x, y = next(iter(test_dataloader))
-    with torch.no_grad():
-        pred = model(x[0])
-        predicted, actual = classes[pred[0].argmax(0)], classes[y[0]]
-        print(f'Predicted: "{predicted}", Actual: "{actual}"')
-    '''
-
-
-def compute_nllloss_manual(x,y0):
-    """
-    x is the vector with shape (batch_size,C) 
-    Note: official example uses log softmax(some vector) as x, so it becomes CELoss.
-    y0 shape is the same (batch_size), whose entries are integers from 0 to C-1
-    Furthermore, for C>1 classes, the other classes are ignored (see below
-
-    """
-    loss = 0.
-    n_batch, n_class = x.shape
-    # print(n_class)
-    for x1,y1 in zip(x,y0):
-        class_index = int(y1.item())
-        loss = loss + x1[class_index] # other class terms, ignore.
-    loss = - loss/n_batch
-    return loss
-
 
 if __name__ == "__main__":
     
@@ -596,9 +508,6 @@ if __name__ == "__main__":
               Device: {device}
               ---------------------------
               """)
-
-        # if dataset == "STL10" and resolution_comp == 1:
-        #     continue
 
         training(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,

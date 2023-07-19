@@ -1,7 +1,5 @@
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
 import torch
-
 
 from models.compressorVGG import encodingUnit
 from models.compressorVGG import decodingUnit
@@ -14,8 +12,7 @@ class VGG(nn.Module):
         self.encoder = []
         self.decoder = []
         if local == True:
-            self.features, self.encoder = features   ###########################
-            #self.features = features ###########################
+            self.features, self.encoder = features
         else: 
             self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
@@ -31,17 +28,7 @@ class VGG(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-        #self.prune_filter = []
-    '''
-    def forward(self, x, local = False):
-        x = self.features(x)
-        if local == False:
-            x = x.view(x.size(0), -1)
-            x = self.classifier(x)
-        return x
-    
-    '''
-    
+
     def forward(self, x, local = False, prune = False):
 
         if local == False:
@@ -51,11 +38,10 @@ class VGG(nn.Module):
             x = self.classifier(x)
             return x
         else:
-            #x = self.features(x)      ########################
-            #return x                   ##########################
-            x, self.prune_filter = self.features(x)   #########################
-            return x, self.prune_filter               #########################
-        
+            x, self.prune_filter = self.features(x)
+            return x, self.prune_filter
+
+
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -68,12 +54,15 @@ class VGG(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
-                
+
+
     def resetPrune(self, threshold=0.9):
         self.encoder.resetPrune(threshold=threshold)
-        
+
+
     def resetdePrune(self, rightSideValue=3):
         self.encoder.resetdePrune(rightSideValue=rightSideValue)
+
 
 def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
     layers = []  
@@ -103,6 +92,7 @@ def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
         return nn.Sequential(*layers), encoder
     else:
         return nn.Sequential(*layers)
+
 
 cfg = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],

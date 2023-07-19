@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-import copy
 import random
 
     
 class encodingUnit(nn.Module):
-    
+
     def __init__(self, compressionProps, prevLayerProps):
         super(encodingUnit, self).__init__()
         
@@ -37,14 +36,7 @@ class encodingUnit(nn.Module):
 
     def forward(self,x, prune=True):   
         x = torch.sigmoid(self.batchNormIn(self.convIn1(x)))
-        
-        #if self.count == 0:
-        #    channel_len = len(x.shape[2:])
-        #    for entry in range(channel_len):
-        #        self.prune_filter = nn.Parameter(self.prune_filter.unsqueeze(-1))
-        #    self.count += 1
-            
-        
+
         if prune == True:
             self.prune_filter.requires_grad_(True) #convert to variable
             filter_relu = self.sigmoid(self.prune_filter)
@@ -55,7 +47,7 @@ class encodingUnit(nn.Module):
             filter_relu = self.sigmoid(self.prune_filter)
             x = torch.mul(x,filter_relu) 
             return x, self.prune_filter
-        
+
     def resetPrune(self, threshold=0.9, rightSideValue=3):
         self.prune_filter.requires_grad_(False)
         count = 0
@@ -66,8 +58,7 @@ class encodingUnit(nn.Module):
                 self.prune_filter[0][count] = -self.scaler 
             count += 1
         self.prune_filter.requires_grad_(True)
-        
-        
+
     def resetdePrune(self, rightSideValue=3):
         self.prune_filter.requires_grad_(False)
         count = 0
@@ -78,8 +69,7 @@ class encodingUnit(nn.Module):
                 self.prune_filter[0][count] = self.scaler 
             count += 1
         self.prune_filter.requires_grad_(True)
-        
-        
+
         
 class decodingUnit(nn.Module):
     

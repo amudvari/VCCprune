@@ -1,10 +1,3 @@
-# Imagenet100 implementation taken from
-# https://github.com/guglielmocamporese/relvit/blob/main/datasets/dataset_option/imagenet100.py
-
-##################################################
-# Imports
-##################################################
-
 from torch.utils.data import Dataset
 import os
 import glob
@@ -12,17 +5,12 @@ import json
 from PIL import Image
 
 from torch.utils.data import DataLoader
-from torchvision import datasets
 from torchvision import transforms
 
 
-##################################################
-# Imagenet100 Dataset
-##################################################
-
 class Imagenet100(Dataset):
     """
-    Subset of the ImageNet dataset.
+    Subset of the ImageNet dataset with 100 random classes.
     """
 
     def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
@@ -91,11 +79,6 @@ class Imagenet100(Dataset):
         if self.target_transform is not None:
             label = self.target_transform(label)
         return img, label
-
-
-##################################################
-# Dataloaders
-##################################################
 
 
 def load_Imagenet100_dataset(batch_size=64):
