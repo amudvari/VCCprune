@@ -16,7 +16,6 @@ from torch.autograd import Variable
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from itertools import product
-from torch.utils.tensorboard import SummaryWriter
 
 
 def training(dataset,
@@ -25,32 +24,6 @@ def training(dataset,
              delta=0.001, resolution_comp=1, device="cuda", threshold=0.9,
              lr_boost=False, mask_filtering_method="partition",
              lr_boost_epoch=3, lr_boost_lr=5e-2):
-    
-    tensorboard_filename = f"runs/pruning/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
-/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}"
-    tensorboard = SummaryWriter(log_dir=tensorboard_filename)
-    d = {"dataset": dataset,
-         "training_epochs": training_epochs,
-         "prune_1_epochs": prune_1_epochs,
-         "prune_2_epochs": prune_2_epochs,
-         "prune_1_budget": prune_1_budget,
-         "prune_2_budget": prune_2_budget,
-         "delta": delta,
-         "resolution_comp": resolution_comp,
-         "device": device,
-         "threshold": threshold,
-         "lr_boost": lr_boost,
-         "mask_filtering_method": mask_filtering_method,
-         "lr_boost_epochs": lr_boost_epoch,
-         "lr_boost_lr": lr_boost_lr,
-        }
-    with open(f"{tensorboard_filename}/parameters.json", "w") as f:
-        json.dump(d, f)
-    
-    tensorboard_title = f"Dataset {dataset}, \
-        Epochs: {{Training: {training_epochs}, Prune_1: {prune_1_epochs}, Prune_2: {prune_2_epochs}}}, \
-        Budget: {{Prune_1: {prune_1_budget}, Prune_2: {prune_2_budget}}}, \
-        Delta: {delta}, Resolution Compression: {resolution_comp}"
 
     compressionProps = {} ### 
     compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
@@ -95,7 +68,6 @@ def training(dataset,
         test_acc, test_error = test(test_dataloader, model1, model2,
                                     loss_fn, device=device)
         test_accs.append(test_acc)
-        tensorboard.add_scalars(f"{tensorboard_title}", {"test_acc": test_acc}, t)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -147,8 +119,6 @@ def training(dataset,
                                                        loss_fn, budget, device=device,
                                                        mask_filtering_method="partition")
         test_accs.append(test_acc)
-        tensorboard.add_scalars(f"{tensorboard_title}", {
-                               "test_acc": test_acc}, t + training_epochs)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -202,8 +172,6 @@ def training(dataset,
                                                        loss_fn, budget, device=device,
                                                        mask_filtering_method="partition")
         test_accs.append(test_acc)
-        tensorboard.add_scalars(f"{tensorboard_title}", {"test_acc": test_acc,},
-                               t + training_epochs + prune_1_epochs)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
     print("Done!")
@@ -239,9 +207,6 @@ def training(dataset,
         writer.writerow(["epochs","avg_errors","avg_mask_errors","test_accs"])
         for row in rows:
             writer.writerow(row)
-
-    tensorboard.flush()
-    tensorboard.close()
 
 
 if __name__ == "__main__":

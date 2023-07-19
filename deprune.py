@@ -15,23 +15,12 @@ from torch.autograd import Variable
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from itertools import product
-from torch.utils.tensorboard import SummaryWriter
 
 
 def depruning(dataset,
               training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
               prune_1_budget=16, prune_2_budget=4,
               delta=0.001, resolution_comp=1, device="cuda", rightSideValue=1):
-
-    tensorboard = SummaryWriter(
-        log_dir=f"runs/depruning/{dataset}/{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{delta}_{resolution_comp}\
-_rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:%M')}"
-    )
-    tensorboard_title = f"Dataset {dataset}, \
-        Epochs: {{Prune_1: {prune_1_epochs}, Prune_2: {prune_2_epochs}, Training: {training_epochs}}}, \
-        Budget: {{Prune_1: {prune_1_budget}, Prune_2: {prune_2_budget}}}, \
-        Delta: {delta}, Resolution Compression: {resolution_comp}"
-
 
     compressionProps = {} ### 
     compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
@@ -81,8 +70,6 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
                                          loss_fn, budget, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
-        tensorboard.add_scalar(
-            f"% Test Acc | {tensorboard_title}", test_acc, t)
         print("entire epoch's error: ", avg_error)
     print("Done!")
     end_time = time.time() 
@@ -115,8 +102,6 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
                                          loss_fn, budget, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
-        tensorboard.add_scalar(
-            f"% Test Acc | {tensorboard_title}", test_acc, t + prune_1_epochs)
         print("entire epoch's error: ", avg_error)
     print("Done!")
     end_time = time.time() 
@@ -142,9 +127,6 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
                                     loss_fn, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
-        tensorboard.add_scalar(
-            f"% Test Acc | {tensorboard_title}", test_acc,
-            t + prune_1_epochs + prune_2_epochs)
         print("entire epoch's error: ", avg_error)
     print("Done!")
     end_time = time.time() 
@@ -160,9 +142,6 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
             ["epochs", "avg_errors", "avg_mask_errors", "test_accs"])
         for row in rows:
             writer.writerow(row)
-
-    tensorboard.flush()
-    tensorboard.close()
 
 
 if __name__ == "__main__":
