@@ -1,6 +1,10 @@
 import torch
 from torch.autograd import Variable
 import numpy as np
+from datasets.cifar10 import load_CIFAR10_dataset
+from datasets.cifar100 import load_CIFAR100_dataset
+from datasets.stl10 import load_STL10_dataset
+from datasets.imagenet100 import load_Imagenet100_dataset
 
 def get_device(dev: str = None):
     if dev:
@@ -9,6 +13,26 @@ def get_device(dev: str = None):
         device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using {device} device")
     return device
+
+
+def get_dataloaders(dataset: str = "CIFAR10"):
+    if dataset == "CIFAR10":
+        train_dataloader, test_dataloader, num_classes = load_CIFAR10_dataset(
+            batch_size=16)
+    elif dataset == "CIFAR100":
+        train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(
+            batch_size=16)
+    elif dataset == "STL10":
+        train_dataloader, test_dataloader, num_classes = load_STL10_dataset(
+            batch_size=16)
+    elif dataset == "Imagenet100":
+        train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(
+            batch_size=16)
+    else:
+        print(f"No dataset named {dataset} exists.")
+        return
+
+    return train_dataloader, test_dataloader, num_classes
 
 
 def train(dataloader, model_local, model_server, loss_fn, optimizer_local,

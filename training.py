@@ -1,18 +1,10 @@
 import random
-import time
 import numpy as np
 import torch
 import csv
-import datetime
-import json
 
-from datasets.cifar10 import load_CIFAR10_dataset
-from datasets.cifar100 import load_CIFAR100_dataset
-from datasets.stl10 import load_STL10_dataset
-from datasets.imagenet100 import load_Imagenet100_dataset
-from utils import get_device, train, test, prune, prunetest
+from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
-from torch.autograd import Variable
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from itertools import product
@@ -29,18 +21,10 @@ def training(dataset,
     compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = resolution_comp ###layer compression factor, reduce by how many times TBD
 
-    if dataset == "CIFAR10":
-        train_dataloader, test_dataloader, num_classes = load_CIFAR10_dataset(batch_size = 16)   #batch_size
-    elif dataset == "CIFAR100":
-        train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(batch_size = 16)   #batch_size
-    elif dataset == "STL10":
-        train_dataloader, test_dataloader, num_classes = load_STL10_dataset(batch_size = 16)   #batch_size
-    elif dataset == "Imagenet100":
-        train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)  # batch_size
+    train_dataloader, test_dataloader, num_classes = get_dataloaders(dataset)
 
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
-    print(device)
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
     model2 = model2.to(device)
 
@@ -58,7 +42,6 @@ def training(dataset,
 
     # Training
     epochs = training_epochs
-    start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         avg_error = train(train_dataloader, model1, model2, loss_fn,
@@ -70,9 +53,6 @@ def training(dataset,
         test_accs.append(test_acc)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
@@ -100,7 +80,6 @@ def training(dataset,
     #pruning
     epochs = prune_1_epochs
     budget = prune_1_budget
-    start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         if lr_boost:
@@ -121,9 +100,6 @@ def training(dataset,
         test_accs.append(test_acc)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
     model1_path = f"savedModels/{dataset}/res_comp_{resolution_comp}/modelvgg1_"+str(budget)+".pth"
@@ -151,7 +127,6 @@ def training(dataset,
     #pruning
     epochs = prune_2_epochs
     budget = prune_2_budget
-    start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         if lr_boost:
@@ -174,9 +149,6 @@ def training(dataset,
         test_accs.append(test_acc)
         test_errors.append(test_error)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
@@ -198,7 +170,6 @@ def training(dataset,
     print("test accuracy across: ", test_accs)
     print("test errors across: ", test_errors)
 
-    t = time.time_ns()
     filename = f'results/pruning/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)

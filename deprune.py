@@ -1,17 +1,10 @@
 import random
-import time
 import numpy as np
 import torch
 import csv
-import datetime
 
-from datasets.cifar10 import load_CIFAR10_dataset
-from datasets.cifar100 import load_CIFAR100_dataset
-from datasets.stl10 import load_STL10_dataset
-from datasets.imagenet100 import load_Imagenet100_dataset
-from utils import get_device, train, test, prune, prunetest
+from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
-from torch.autograd import Variable
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
 from itertools import product
@@ -26,18 +19,10 @@ def depruning(dataset,
     compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = resolution_comp ###layer compression factor, reduce by how many times TBD
 
-    if dataset == "CIFAR10":
-        train_dataloader, test_dataloader, num_classes = load_CIFAR10_dataset(batch_size=16)
-    elif dataset == "CIFAR100":
-        train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(batch_size = 16)
-    elif dataset == "STL10":
-        train_dataloader, test_dataloader, num_classes = load_STL10_dataset(batch_size = 16)
-    elif dataset == "Imagenet100":
-        train_dataloader, test_dataloader, num_classes = load_Imagenet100_dataset(batch_size=16)
+    train_dataloader, test_dataloader, num_classes = get_dataloaders(dataset)
     
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
-    print(device)
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
     model2 = model2.to(device)
 
@@ -58,7 +43,6 @@ def depruning(dataset,
     #pruning
     epochs = prune_1_epochs #5
     budget = prune_1_budget
-    start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         avg_error, mask_error =  prune(train_dataloader, model1, model2,
@@ -71,9 +55,6 @@ def depruning(dataset,
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
     model1.resetdePrune(rightSideValue=rightSideValue)
     optimizer1 = torch.optim.SGD(
@@ -85,7 +66,6 @@ def depruning(dataset,
     #pruning
     epochs = prune_2_epochs #5
     budget = prune_2_budget
-    start_time = time.time() 
     for t in range(epochs):
         if t >= 3:
             optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2,
@@ -103,9 +83,6 @@ def depruning(dataset,
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
     model1.resetdePrune(rightSideValue=rightSideValue)
 
@@ -116,7 +93,6 @@ def depruning(dataset,
 
     #full training
     epochs = training_epochs #5
-    start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         avg_error = train(train_dataloader, model1, model2, loss_fn,
@@ -128,11 +104,7 @@ def depruning(dataset,
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         print("entire epoch's error: ", avg_error)
-    print("Done!")
-    end_time = time.time() 
-    print("time taken in seconds: ", end_time-start_time)
 
-    t = time.time_ns()
     filename = f'results/depruning/{dataset}/data_{prune_1_epochs}_{prune_2_epochs}_{training_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1, len(avg_errors)+1)
     rows = zip(epochs, avg_errors, avg_mask_errors, test_accs)
