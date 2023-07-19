@@ -1,24 +1,21 @@
 import random
 import time
 import numpy as np
-
 import torch
-from torch import nn
-from torch.autograd import Variable
+import csv
+import datetime
+import json
 
-from models.vccModel import NeuralNetwork_local
-from models.vccModel import NeuralNetwork_server
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.cifar100 import load_CIFAR100_dataset
 from datasets.stl10 import load_STL10_dataset
 from datasets.imagenet100 import load_Imagenet100_dataset
-
-import csv
+from torch import nn
+from torch.autograd import Variable
+from models.vccModel import NeuralNetwork_local
 from itertools import product
-
+from models.vccModel import NeuralNetwork_server
 from torch.utils.tensorboard import SummaryWriter
-import datetime
-import json
 
 
 def get_device(dev: str = None):
@@ -31,7 +28,8 @@ def get_device(dev: str = None):
 
 
 def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
-          optimizer_server, quantizeDtype = torch.float32, realDtype = torch.float32, **kwargs):
+          optimizer_server, quantizeDtype = torch.float32,
+          realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     model_local.train()
     model_server.train()
@@ -49,7 +47,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
         transfererd_split_vals = quantized_split_vals.detach().to(device)
         
         dequantized_split_vals = transfererd_split_vals.detach().to(realDtype)
-        serverInput_split_vals = Variable(dequantized_split_vals, requires_grad=True)
+        serverInput_split_vals = Variable(dequantized_split_vals, 
+                                          requires_grad=True)
         pred = model_server(serverInput_split_vals)
         loss = loss_fn(pred, y)
 
@@ -77,7 +76,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000, delta=0.001):
     
     prune_filter_squeezed = prune_filter.squeeze()
-    prune_filter_control_1 = torch.exp( delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_1 = torch.exp( 
+         delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
     prune_filter_control_2 = torch.exp(
        - delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
     prune_filter_control = prune_filter_control_1 + prune_filter_control_2
@@ -87,7 +87,8 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000, delta=0.001)
     
     
            
-def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, 
+def prune(dataloader, model_local, model_server, loss_fn,
+          optimizer_local, optimizer_server, budget, 
           quantizeDtype = torch.float16, realDtype = torch.float32,
           mask_filtering_method="partition", **kwargs):
     size = len(dataloader.dataset)
@@ -299,8 +300,10 @@ def training(dataset,
     model2 = model2.to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-3, momentum=0.9, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3,
+                                 momentum=0.9, weight_decay=5e-4)
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-3,
+                                 momentum=0.9, weight_decay=5e-4)
 
     #error track: 
     avg_errors = []
@@ -313,10 +316,12 @@ def training(dataset,
     start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        avg_error = train(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, device=device)
+        avg_error = train(train_dataloader, model1, model2, loss_fn,
+                          optimizer1, optimizer2, device=device)
         avg_errors.append(avg_error)
         avg_mask_errors.append(0)
-        test_acc, test_error = test(test_dataloader, model1, model2, loss_fn, device=device)
+        test_acc, test_error = test(test_dataloader, model1, model2,
+                                    loss_fn, device=device)
         test_accs.append(test_acc)
         tensorboard.add_scalars(f"{tensorboard_title}", {"test_acc": test_acc}, t)
         test_errors.append(test_error)
@@ -356,14 +361,19 @@ def training(dataset,
         print(f"Epoch {t+1}\n-------------------------------")
         if lr_boost:
             if t >= 3:
-                optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-                optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-        avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2,
-                                       budget, delta=delta, device=device, mask_filtering_method="partition")
+                optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2,
+                                             momentum=0.0, weight_decay=5e-4)
+                optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2,
+                                             momentum=0.0, weight_decay=5e-4)
+        avg_error, mask_error =  prune(train_dataloader, model1, model2,
+                                       loss_fn, optimizer1, optimizer2,
+                                       budget, delta=delta, device=device,
+                                       mask_filtering_method="partition")
         avg_errors.append(avg_error)
         avg_mask_errors.append(mask_error)
         test_acc, test_error, mask_allowed = prunetest(test_dataloader, model1, model2,
-                                                       loss_fn, budget, device=device, mask_filtering_method="partition")
+                                                       loss_fn, budget, device=device,
+                                                       mask_filtering_method="partition")
         test_accs.append(test_acc)
         tensorboard.add_scalars(f"{tensorboard_title}", {
                                "test_acc": test_acc, "masks_allowed": mask_allowed}, t + training_epochs)
@@ -405,15 +415,20 @@ def training(dataset,
         if lr_boost:
             if t >= lr_boost_epoch:
                 optimizer1 = torch.optim.SGD(
-                    model1.parameters(),  lr=lr_boost_lr, momentum=0.0, weight_decay=5e-4)
+                    model1.parameters(),  lr=lr_boost_lr,
+                    momentum=0.0, weight_decay=5e-4)
                 optimizer2 = torch.optim.SGD(
-                    model2.parameters(),  lr=lr_boost_lr, momentum=0.0, weight_decay=5e-4)
-        avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2,
-                                       budget, delta=delta, device=device, mask_filtering_method="partition")
+                    model2.parameters(),  lr=lr_boost_lr, 
+                    momentum=0.0, weight_decay=5e-4)
+        avg_error, mask_error =  prune(train_dataloader, model1, model2,
+                                       loss_fn, optimizer1, optimizer2,
+                                       budget, delta=delta, device=device,
+                                       mask_filtering_method="partition")
         avg_errors.append(avg_error)
         avg_mask_errors.append(mask_error)
         test_acc, test_error, mask_allowed = prunetest(test_dataloader, model1, model2,
-                                                       loss_fn, budget, device=device, mask_filtering_method="partition")
+                                                       loss_fn, budget, device=device,
+                                                       mask_filtering_method="partition")
         test_accs.append(test_acc)
         tensorboard.add_scalars(f"{tensorboard_title}", {"test_acc": test_acc, "masks_allowed": mask_allowed},
                                t + training_epochs + prune_1_epochs)
@@ -512,6 +527,7 @@ if __name__ == "__main__":
         training(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
-                delta=delta, resolution_comp=resolution_comp, device=device, threshold=threshold,
+                delta=delta, resolution_comp=resolution_comp, device=device,
+                threshold=threshold,
                 lr_boost=lr_boost, mask_filtering_method=mask_filtering_method,
                 lr_boost_epoch=lr_boost_epoch, lr_boost_lr=lr_boost_lr)

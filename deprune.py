@@ -1,27 +1,20 @@
 import random
-
-from datasets.cifar100 import load_CIFAR100_dataset
-from datasets.imagenet100 import load_Imagenet100_dataset
-from datasets.stl10 import load_STL10_dataset
-
-random.seed(57)
 import time
 import numpy as np
-
 import torch
+import csv
+import datetime
+
+from datasets.cifar10 import load_CIFAR10_dataset
+from datasets.cifar100 import load_CIFAR100_dataset
+from datasets.stl10 import load_STL10_dataset
+from datasets.imagenet100 import load_Imagenet100_dataset
 from torch import nn
 from torch.autograd import Variable
-
 from models.vccModel import NeuralNetwork_local
 from models.vccModel import NeuralNetwork_server
-from datasets.cifar10 import load_CIFAR10_dataset
-
-import matplotlib.pyplot as plt
-import csv
 from itertools import product
-
 from torch.utils.tensorboard import SummaryWriter
-import datetime
 
 
 def get_device(dev: str = None):
@@ -33,8 +26,9 @@ def get_device(dev: str = None):
     return device
 
 
-def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, quantizeDtype = torch.float16, realDtype = torch.float32,
-          **kwargs):
+def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
+          optimizer_server, quantizeDtype = torch.float16,
+          realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     model_local.train()
     model_server.train()
@@ -80,7 +74,8 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
 def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000, delta=0.001):
     
     prune_filter_squeezed = prune_filter.squeeze()
-    prune_filter_control_1 = torch.exp( delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+    prune_filter_control_1 = torch.exp( 
+         delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
     prune_filter_control_2 = torch.exp(
        - delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
     prune_filter_control = prune_filter_control_1 + prune_filter_control_2
@@ -89,7 +84,8 @@ def pruneLoss(loss_fn, pred, y, prune_filter, budget, epsilon=1000, delta=0.001)
     return diff
 
            
-def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server, budget, pruneBackward = True, 
+def prune(dataloader, model_local, model_server, loss_fn, optimizer_local,
+          optimizer_server, budget, pruneBackward = True, 
           quantizeDtype = torch.float16, realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     model_local.train()
@@ -161,8 +157,8 @@ def prune(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
     return total_loss, total_mask_loss  
 
 
-def test(dataloader, model_local, model_server, loss_fn, quantizeDtype = torch.float16, realDtype = torch.float32,
-         **kwargs):
+def test(dataloader, model_local, model_server, loss_fn, 
+         quantizeDtype = torch.float16, realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model_local.eval()
@@ -191,8 +187,8 @@ def test(dataloader, model_local, model_server, loss_fn, quantizeDtype = torch.f
     return(100*correct, test_loss)    
     
 
-def prunetest(dataloader, model_local, model_server, loss_fn, budget, quantizeDtype = torch.float16, realDtype = torch.float32,
-              **kwargs):
+def prunetest(dataloader, model_local, model_server, loss_fn, budget, 
+              quantizeDtype = torch.float16, realDtype = torch.float32, **kwargs):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model_local.eval()
@@ -267,8 +263,10 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
 
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0,
+                                 weight_decay=5e-4)
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0,
+                                 weight_decay=5e-4)
 
 
     #error track: 
@@ -283,10 +281,13 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
     start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget, delta=delta, device=device)
+        avg_error, mask_error =  prune(train_dataloader, model1, model2,
+                                       loss_fn, optimizer1, optimizer2, budget,
+                                       delta=delta, device=device)
         avg_errors.append(avg_error)
         avg_mask_errors.append(mask_error)
-        test_acc, test_loss =  prunetest(test_dataloader, model1, model2, loss_fn, budget, device=device)
+        test_acc, test_loss =  prunetest(test_dataloader, model1, model2,
+                                         loss_fn, budget, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         tensorboard.add_scalar(
@@ -309,13 +310,18 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
     start_time = time.time() 
     for t in range(epochs):
         if t >= 3:
-            optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-            optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
+            optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2,
+                                         momentum=0.0, weight_decay=5e-4)
+            optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2,
+                                         momentum=0.0, weight_decay=5e-4)
         print(f"Epoch {t+1}\n-------------------------------")
-        avg_error, mask_error =  prune(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, budget, delta=delta, device=device)
+        avg_error, mask_error =  prune(train_dataloader, model1, model2,
+                                       loss_fn, optimizer1, optimizer2, budget,
+                                       delta=delta, device=device)
         avg_errors.append(avg_error)
         avg_mask_errors.append(mask_error)
-        test_acc, test_loss =  prunetest(test_dataloader, model1, model2, loss_fn, budget, device=device)
+        test_acc, test_loss =  prunetest(test_dataloader, model1, model2,
+                                         loss_fn, budget, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         tensorboard.add_scalar(
@@ -327,39 +333,31 @@ _rightSideValue_{rightSideValue}/{datetime.datetime.now().strftime('%d-%m-%y_%H:
 
     model1.resetdePrune(rightSideValue=rightSideValue)
 
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0, weight_decay=5e-4) #torch.optim.Adam(model2.parameters())#
-
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0,
+                                 weight_decay=5e-4)
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0,
+                                 weight_decay=5e-4)
 
     #full training
     epochs = training_epochs #5
     start_time = time.time() 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        avg_error = train(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2, device=device)
+        avg_error = train(train_dataloader, model1, model2, loss_fn,
+                          optimizer1, optimizer2, device=device)
         avg_errors.append(avg_error)
         avg_mask_errors.append(0)
-        test_acc, test_loss =  test(test_dataloader, model1, model2, loss_fn, device=device)
+        test_acc, test_loss =  test(test_dataloader, model1, model2,
+                                    loss_fn, device=device)
         test_accs.append(test_acc)
         test_losses.append(test_loss)
         tensorboard.add_scalar(
-            f"% Test Acc | {tensorboard_title}", test_acc, t + prune_1_epochs + prune_2_epochs)
+            f"% Test Acc | {tensorboard_title}", test_acc,
+            t + prune_1_epochs + prune_2_epochs)
         print("entire epoch's error: ", avg_error)
     print("Done!")
     end_time = time.time() 
     print("time taken in seconds: ", end_time-start_time)
-
-    print("errors across: ", avg_errors)
-    plt.plot(avg_errors)
-    plt.show()
-
-    print("mask errors across: ", avg_mask_errors)
-    plt.plot(avg_mask_errors)
-    plt.show()
-
-    print("test accuracy across: ", test_accs)
-    plt.plot(test_accs)
-    plt.show()
 
     t = time.time_ns()
     filename = f'results/depruning/{dataset}/data_{prune_1_epochs}_{prune_2_epochs}_{training_epochs}_{resolution_comp}_{delta}.csv'
