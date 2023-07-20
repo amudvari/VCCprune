@@ -10,23 +10,22 @@ from models.vccModel import NeuralNetwork_server
 from itertools import product
 
 
-def training(dataset,
+def pruning(dataset,
              training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
              prune_1_budget=16, prune_2_budget=4,
              delta=0.001, resolution_comp=1, device="cuda", threshold=0.9,
              lr_boost=False, mask_filtering_method="partition",
-             lr_boost_epoch=3, lr_boost_lr=5e-2):
+             lr_boost_epoch=3, lr_boost_lr=5e-2, filename="test.csv"):
 
-    compressionProps = {} ### 
-    compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
-    compressionProps['resolution_compression_factor'] = resolution_comp ###layer compression factor, reduce by how many times TBD
+    compressionProps = {}
+    compressionProps['feature_compression_factor'] = 1
+    compressionProps['resolution_compression_factor'] = resolution_comp
 
     train_dataloader, test_dataloader, num_classes = get_dataloaders(dataset)
 
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
-    model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
-    model2 = model2.to(device)
+    model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3,
@@ -165,12 +164,6 @@ def training(dataset,
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
-    print("errors across: ", avg_errors)
-    print("mask errors across: ", avg_mask_errors)
-    print("test accuracy across: ", test_accs)
-    print("test errors across: ", test_errors)
-
-    filename = f'results/pruning/{dataset}/data_{training_epochs}_{prune_1_epochs}_{prune_2_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
     with open(filename, 'w', newline="") as file:

@@ -15,17 +15,15 @@ def depruning(dataset,
               prune_1_budget=16, prune_2_budget=4,
               delta=0.001, resolution_comp=1, device="cuda", rightSideValue=1):
 
-    compressionProps = {} ### 
-    compressionProps['feature_compression_factor'] = 1 ### resolution compression factor, compress by how many times
-    compressionProps['resolution_compression_factor'] = resolution_comp ###layer compression factor, reduce by how many times TBD
+    compressionProps = {}
+    compressionProps['feature_compression_factor'] = 1
+    compressionProps['resolution_compression_factor'] = resolution_comp
 
     train_dataloader, test_dataloader, num_classes = get_dataloaders(dataset)
     
     device = get_device(device)
     model1 = NeuralNetwork_local(compressionProps, num_classes=num_classes).to(device)
-    model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes)
-    model2 = model2.to(device)
-
+    model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0,
