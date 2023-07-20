@@ -5,8 +5,8 @@ import csv
 
 from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
-from models.vccModel import NeuralNetwork_local
-from models.vccModel import NeuralNetwork_server
+from models.vggModel import NeuralNetwork_local
+from models.vggModel import NeuralNetwork_server
 from itertools import product
 
 
