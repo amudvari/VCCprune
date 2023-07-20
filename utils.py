@@ -2,7 +2,6 @@ import torch
 from torch.autograd import Variable
 import numpy as np
 from datasets.cifar10 import load_CIFAR10_dataset
-from datasets.cifar100 import load_CIFAR100_dataset
 from datasets.stl10 import load_STL10_dataset
 from datasets.imagenet100 import load_Imagenet100_dataset
 
@@ -18,9 +17,6 @@ def get_device(dev: str = None):
 def get_dataloaders(dataset: str = "CIFAR10"):
     if dataset == "CIFAR10":
         train_dataloader, test_dataloader, num_classes = load_CIFAR10_dataset(
-            batch_size=16)
-    elif dataset == "CIFAR100":
-        train_dataloader, test_dataloader, num_classes = load_CIFAR100_dataset(
             batch_size=16)
     elif dataset == "STL10":
         train_dataloader, test_dataloader, num_classes = load_STL10_dataset(

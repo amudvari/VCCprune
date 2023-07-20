@@ -143,21 +143,6 @@ if __name__ == "__main__":
         prune_1_budget, prune_2_budget, delta, rightSideValue  \
         in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs,
                    prune_1_budgets, prune_2_budgets, deltas, rightSideValues):
-        print(f"""
-              ---------------------------
-              Parameters
-              ---------------------------
-              Dataset: {dataset},
-              Resolution Compression Factor: {resolution_comp},
-              Prune 1 Epochs: {prune_1_epoch},
-              Prune 2 Epochs: {prune_2_epoch},
-              Training Epochs: {training_epoch},
-              Prune 1 Budget: {prune_1_budget},
-              Prune 2 Budget: {prune_2_budget},
-              Delta: {delta}
-              RightSideValue: {rightSideValue}
-              ---------------------------
-              """)
 
         depruning(dataset, training_epochs=training_epoch,
                  prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
