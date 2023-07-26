@@ -2,6 +2,7 @@ import random
 import numpy as np
 import torch
 import csv
+import time
 
 from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
@@ -17,6 +18,7 @@ def pruning(dataset,
              lr_boost=False, mask_filtering_method="partition",
              lr_boost_epoch=3, lr_boost_lr=5e-2, filename="test.csv"):
 
+    start_time = time.time()
     compressionProps = {}
     compressionProps['feature_compression_factor'] = 1
     compressionProps['resolution_compression_factor'] = resolution_comp
@@ -171,6 +173,8 @@ def pruning(dataset,
         writer.writerow(["epochs","avg_errors","avg_mask_errors","test_accs"])
         for row in rows:
             writer.writerow(row)
+    end_time = time.time()
+    print(f"Total time: {end_time - start_time}")
 
 
 if __name__ == "__main__":
@@ -180,14 +184,13 @@ if __name__ == "__main__":
     datasets = [
         # 'STL10',
         'CIFAR10',
-        # 'CIFAR100',
         # 'Imagenet100',
     ]
-    training_epochs = [30]
-    prune_1_epochs = [15]
-    prune_2_epochs = [20]
-    prune_1_budgets = [8]
-    prune_2_budgets = [2]
+    training_epochs = [3]
+    prune_1_epochs = [2]
+    prune_2_epochs = [2]
+    prune_1_budgets = [32]
+    prune_2_budgets = [4]
     deltas = [0.01]
     resolution_comps = [1]
     device = "cuda:0"
@@ -199,16 +202,15 @@ if __name__ == "__main__":
 
     
     for dataset, resolution_comp, training_epoch, prune_1_epoch, prune_2_epoch, \
-            prune_1_budget, prune_2_budget, delta, threshold, lr_boost, mask_filtering_method, \
+            prune_1_budget, prune_2_budget, delta, lr_boost, mask_filtering_method, \
             lr_boost_epoch, lr_boost_lr \
         in product(datasets, resolution_comps, training_epochs, prune_1_epochs, prune_2_epochs,
-                   prune_1_budgets, prune_2_budgets, deltas, thresholds, lr_boosts, mask_filtering_methods,
+                   prune_1_budgets, prune_2_budgets, deltas, lr_boosts, mask_filtering_methods,
                    lr_boost_epochs, lr_boost_lrs):
 
         pruning(dataset, training_epochs=training_epoch,
                 prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                 prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
                 delta=delta, resolution_comp=resolution_comp, device=device,
-                threshold=threshold,
                 lr_boost=lr_boost, mask_filtering_method=mask_filtering_method,
                 lr_boost_epoch=lr_boost_epoch, lr_boost_lr=lr_boost_lr)

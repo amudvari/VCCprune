@@ -2,6 +2,7 @@ import random
 import numpy as np
 import torch
 import csv
+import time
 
 from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
@@ -13,8 +14,10 @@ from itertools import product
 def depruning(dataset,
               training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
               prune_1_budget=16, prune_2_budget=4,
-              delta=0.001, resolution_comp=1, device="cuda", rightSideValue=1):
+              delta=0.001, resolution_comp=1, device="cuda", rightSideValue=1,
+              filename="test.csv"):
 
+    start_time = time.time()
     compressionProps = {}
     compressionProps['feature_compression_factor'] = 1
     compressionProps['resolution_compression_factor'] = resolution_comp
@@ -103,7 +106,6 @@ def depruning(dataset,
         test_losses.append(test_loss)
         print("entire epoch's error: ", avg_error)
 
-    filename = f'results/depruning/{dataset}/data_{prune_1_epochs}_{prune_2_epochs}_{training_epochs}_{resolution_comp}_{delta}.csv'
     epochs = np.arange(1, len(avg_errors)+1)
     rows = zip(epochs, avg_errors, avg_mask_errors, test_accs)
     with open(filename, 'w', newline="") as file:
@@ -112,6 +114,8 @@ def depruning(dataset,
             ["epochs", "avg_errors", "avg_mask_errors", "test_accs"])
         for row in rows:
             writer.writerow(row)
+    end_time = time.time()
+    print(f"Total time: {end_time - start_time}")
 
 
 if __name__ == "__main__":
@@ -125,14 +129,13 @@ if __name__ == "__main__":
 
     datasets = [
         # 'STL10',
-        # 'CIFAR10',
-        # 'CIFAR100',
-        'Imagenet100',
+        'CIFAR10',
+        # 'Imagenet100',
     ]
-    prune_1_epochs = [45]
+    prune_1_epochs = [15]
     prune_2_epochs = [0]
-    training_epochs = [0]
-    prune_1_budgets = [128]
+    training_epochs = [7]
+    prune_1_budgets = [4]
     prune_2_budgets = [0]
     deltas = [0.1]  
     resolution_comps = [1]
@@ -147,5 +150,4 @@ if __name__ == "__main__":
         depruning(dataset, training_epochs=training_epoch,
                  prune_1_epochs=prune_1_epoch, prune_2_epochs=prune_2_epoch,
                  prune_1_budget=prune_1_budget, prune_2_budget=prune_2_budget,
-                 delta=delta, resolution_comp=resolution_comp, device=device,
-                 rightSideValue=rightSideValue)
+                 delta=delta, resolution_comp=resolution_comp, device=device)

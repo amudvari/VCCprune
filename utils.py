@@ -10,7 +10,7 @@ def get_device(dev: str = None):
         device = dev
     else:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using {device} device")
+    print(f"Device: {device}")
     return device
 
 
@@ -168,7 +168,6 @@ def prune(dataloader, model_local, model_server, loss_fn,
             realLoss = realLoss.item()
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
             print(f"Real loss: {realLoss:>7f}  [{current:>5d}/{size:>5d}]")
-            print("masks allowed: ", mask_allowed)
             total_loss += realLoss
             total_mask_loss += loss
         else:
