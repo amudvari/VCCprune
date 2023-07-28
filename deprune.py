@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import csv
 import time
+import pathlib
 
 from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
@@ -14,8 +15,16 @@ from itertools import product
 def depruning(dataset,
               training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
               prune_1_budget=16, prune_2_budget=4,
-              delta=0.001, resolution_comp=1, device="cuda", rightSideValue=1,
-              filename="test.csv"):
+              delta=0.01, resolution_comp=1, device=None,
+              rightSideValue=3, lr=1e-3,
+              filename="test.csv", result_directory="figures/Figure_6"):
+
+    # Python random seed
+    random.seed(56)
+    # PyTorch random seed
+    torch.manual_seed(56)
+    # NumPy random seed
+    np.random.seed(56)
 
     start_time = time.time()
     compressionProps = {}
@@ -29,9 +38,9 @@ def depruning(dataset,
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0,
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=lr, momentum=0.0,
                                  weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0,
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=lr, momentum=0.0,
                                  weight_decay=5e-4)
 
 
@@ -42,7 +51,7 @@ def depruning(dataset,
     test_losses = []
 
     #pruning
-    epochs = prune_1_epochs #5
+    epochs = prune_1_epochs
     budget = prune_1_budget
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
@@ -59,13 +68,13 @@ def depruning(dataset,
 
     model1.resetdePrune(rightSideValue=rightSideValue)
     optimizer1 = torch.optim.SGD(
-        model1.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+        model1.parameters(),  lr=lr, momentum=0.0, weight_decay=5e-4)
     optimizer2 = torch.optim.SGD(
-        model2.parameters(),  lr=5e-2, momentum=0.0, weight_decay=5e-4)
+        model2.parameters(),  lr=lr, momentum=0.0, weight_decay=5e-4)
 
 
     #pruning
-    epochs = prune_2_epochs #5
+    epochs = prune_2_epochs
     budget = prune_2_budget
     for t in range(epochs):
         if t >= 3:
@@ -87,9 +96,9 @@ def depruning(dataset,
 
     model1.resetdePrune(rightSideValue=rightSideValue)
 
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2, momentum=0.0,
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=lr, momentum=0.0,
                                  weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2, momentum=0.0,
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=lr, momentum=0.0,
                                  weight_decay=5e-4)
 
     #full training
@@ -108,6 +117,8 @@ def depruning(dataset,
 
     epochs = np.arange(1, len(avg_errors)+1)
     rows = zip(epochs, avg_errors, avg_mask_errors, test_accs)
+    pathlib.Path(result_directory).mkdir(parents=True, exist_ok=True)
+    filename = result_directory + '/' + filename
     with open(filename, 'w', newline="") as file:
         writer = csv.writer(file)
         writer.writerow(
@@ -120,24 +131,17 @@ def depruning(dataset,
 
 if __name__ == "__main__":
 
-    # Python random seed
-    random.seed(56)
-    # PyTorch random seed
-    torch.manual_seed(56)
-    # NumPy random seed
-    np.random.seed(56)
-
     datasets = [
         # 'STL10',
-        'CIFAR10',
-        # 'Imagenet100',
+        # 'CIFAR10',
+        'Imagenet100',
     ]
-    prune_1_epochs = [15]
+    prune_1_epochs = [2]
     prune_2_epochs = [0]
-    training_epochs = [7]
+    training_epochs = [1]
     prune_1_budgets = [4]
     prune_2_budgets = [0]
-    deltas = [0.1]  
+    deltas = [0.01]
     resolution_comps = [1]
     device = "cuda:1"
     rightSideValues = [3]

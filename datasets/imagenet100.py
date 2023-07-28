@@ -26,9 +26,11 @@ class Imagenet100(Dataset):
 
     def _download(self):
         url = 'https://www.kaggle.com/datasets/ambityga/imagenet100/download'
-        if not os.path.exists(f'{self.data_dir}/imagenet100/archive.zip'):
+        if not os.path.exists(f'{self.data_dir}/imagenet100/'):
             raise Exception(f'Error. Download of Dataset Imagenet100 not yet implemented.' +
-                            f'Please download it from {url}')
+                            f'Please download it from "{url}", place it in ' +
+                            f'directory "data/imagenet100" and unzip the ' +
+                            f'downloaded file.')
 
     def _retrieve_labels_list(self):
         f = open(f'{self.data_dir}/imagenet100/Labels.json', 'r')
@@ -87,7 +89,7 @@ def load_Imagenet100_dataset(batch_size=64):
     training_data = Imagenet100(
         root="data",
         train=True,
-        download=False,
+        download=True,
         transform=transforms.Compose([
             lambda x: x.convert('RGB'),
             transforms.RandomResizedCrop(224),
@@ -102,7 +104,7 @@ def load_Imagenet100_dataset(batch_size=64):
     test_data = Imagenet100(
         root="data",
         train=False,
-        download=False,
+        download=True,
         transform=transforms.Compose([
             lambda x: x.convert('RGB'),
             transforms.Resize(256),

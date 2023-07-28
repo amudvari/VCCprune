@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import csv
 import time
+import pathlib
 
 from utils import get_device, get_dataloaders, train, test, prune, prunetest
 from torch import nn
@@ -14,9 +15,17 @@ from itertools import product
 def pruning(dataset,
              training_epochs=50, prune_1_epochs=15, prune_2_epochs=15,
              prune_1_budget=16, prune_2_budget=4,
-             delta=0.001, resolution_comp=1, device="cuda", threshold=0.9,
+             delta=0.01, resolution_comp=1, device=None, threshold=0.1,
              lr_boost=False, mask_filtering_method="partition",
-             lr_boost_epoch=3, lr_boost_lr=5e-2, filename="test.csv"):
+             lr_boost_epoch=3, lr_boost_lr=5e-2, filename="test.csv", lr=1e-3,
+             result_directory="figures/Figure_6"):
+
+    # Python random seed
+    random.seed(56)
+    # PyTorch random seed
+    torch.manual_seed(56)
+    # NumPy random seed
+    np.random.seed(56)
 
     start_time = time.time()
     compressionProps = {}
@@ -30,9 +39,9 @@ def pruning(dataset,
     model2 = NeuralNetwork_server(compressionProps, num_classes=num_classes).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-3,
+    optimizer1 = torch.optim.SGD(model1.parameters(),  lr=lr,
                                  momentum=0.9, weight_decay=5e-4)
-    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-3,
+    optimizer2 = torch.optim.SGD(model2.parameters(),  lr=lr,
                                  momentum=0.9, weight_decay=5e-4)
 
     #error track: 
@@ -58,15 +67,15 @@ def pruning(dataset,
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
     model1_path = f"results/savedModels/model1.pth"
-    torch.save(model1.state_dict(), model1_path)
+    # torch.save(model1.state_dict(), model1_path)
     print("Saved PyTorch Model State to {:s}".format(model1_path))
     model2_path = f"results/savedModels/model2.pth"
-    torch.save(model2.state_dict(), model2_path)
+    # torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
 
-    model1.load_state_dict(torch.load(model1_path))
-    model2.load_state_dict(torch.load(model2_path))
+    # model1.load_state_dict(torch.load(model1_path))
+    # model2.load_state_dict(torch.load(model2_path))
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
@@ -85,9 +94,9 @@ def pruning(dataset,
         print(f"Epoch {t+1}\n-------------------------------")
         if lr_boost:
             if t >= 3:
-                optimizer1 = torch.optim.SGD(model1.parameters(),  lr=1e-2,
+                optimizer1 = torch.optim.SGD(model1.parameters(),  lr=lr,
                                              momentum=0.0, weight_decay=5e-4)
-                optimizer2 = torch.optim.SGD(model2.parameters(),  lr=1e-2,
+                optimizer2 = torch.optim.SGD(model2.parameters(),  lr=lr,
                                              momentum=0.0, weight_decay=5e-4)
         avg_error, mask_error =  prune(train_dataloader, model1, model2,
                                        loss_fn, optimizer1, optimizer2,
@@ -104,15 +113,15 @@ def pruning(dataset,
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
     model1_path = f"results/savedModels/model1.pth"
-    torch.save(model1.state_dict(), model1_path)
+    # torch.save(model1.state_dict(), model1_path)
     print("Saved PyTorch Model State to {:s}".format(model1_path))
     model2_path = f"results/savedModels/model2.pth"
-    torch.save(model2.state_dict(), model2_path)
+    # torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
 
-    model1.load_state_dict(torch.load(model1_path))
-    model2.load_state_dict(torch.load(model2_path))
+    # model1.load_state_dict(torch.load(model1_path))
+    # model2.load_state_dict(torch.load(model2_path))
 
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
@@ -154,20 +163,22 @@ def pruning(dataset,
 
     test(test_dataloader, model1, model2, loss_fn, device=device)
     model1_path = f"results/savedModels/model1.pth"
-    torch.save(model1.state_dict(), model1_path)
+    # torch.save(model1.state_dict(), model1_path)
     print("Saved PyTorch Model State to {:s}".format(model1_path))
     model2_path = f"results/savedModels/model2.pth"
-    torch.save(model2.state_dict(), model2_path)
+    # torch.save(model2.state_dict(), model2_path)
     print("Saved PyTorch Model State to {:s}".format(model2_path))
 
-    model1.load_state_dict(torch.load(model1_path))
-    model2.load_state_dict(torch.load(model2_path))
+    # model1.load_state_dict(torch.load(model1_path))
+    # model2.load_state_dict(torch.load(model2_path))
 
     print("Test loaded")
     test(test_dataloader, model1, model2, loss_fn, device=device)
 
     epochs = np.arange(1,len(avg_errors)+1)
     rows = zip(epochs,avg_errors,avg_mask_errors,test_accs)
+    pathlib.Path(result_directory).mkdir(parents=True, exist_ok=True)
+    filename = result_directory + '/' + filename
     with open(filename, 'w', newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["epochs","avg_errors","avg_mask_errors","test_accs"])
@@ -179,16 +190,14 @@ def pruning(dataset,
 
 if __name__ == "__main__":
     
-    random.seed(57)
-    
     datasets = [
-        # 'STL10',
-        'CIFAR10',
+        'STL10',
+        # 'CIFAR10',
         # 'Imagenet100',
     ]
-    training_epochs = [3]
-    prune_1_epochs = [2]
-    prune_2_epochs = [2]
+    training_epochs = [20]
+    prune_1_epochs = [0]
+    prune_2_epochs = [0]
     prune_1_budgets = [32]
     prune_2_budgets = [4]
     deltas = [0.01]

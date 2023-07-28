@@ -1,6 +1,8 @@
 import torch
 from torch.autograd import Variable
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.stl10 import load_STL10_dataset
 from datasets.imagenet100 import load_Imagenet100_dataset
@@ -262,3 +264,71 @@ def prunetest(dataloader, model_local, model_server, loss_fn, budget,
     print(
         f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
     return (100*correct, test_loss)
+
+
+def plot(filenames, result_name="Figure_6", directory="figures/Figure_6"):
+
+    colors = ['b', 'r', 'g', 'm']
+    lines = ['solid', 'solid', 'dashed', 'dashed']
+    fig = plt.figure(figsize=(12, 7))
+    plt.rc('font', family='serif')
+    plt.rc('xtick', labelsize=10)
+    plt.rc('ytick', labelsize=10)
+
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.set_xlabel('Epoch', size=15)
+    ax.set_ylabel('Test Accuracy (%)', size=15)
+
+    for f,c,l in zip(filenames, colors, lines):
+
+        df = pd.read_csv(directory + '/' + f)
+        ax.plot(df['epochs'], df['test_accs'], color=c, ls=l,
+                label=f.split('.csv')[0])
+
+    plt.scatter(df['epochs'], df['test_accs'], color=c)
+
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
+            fancybox=True, shadow=True, ncol=5, prop=dict(size=12))
+    plt.savefig(directory + '/' + result_name)
+
+
+def plot_with_offset(filenames, result_name="Figure_6",
+                     directory="figures/Figure_6",
+                     offsets = {"no_compression": [0, 30],
+                                "4Comp": [40, 50],
+                                "32Comp": [30, 40]}):
+
+    colors = ['b', 'r', 'g', 'm']
+    lines = ['solid', 'solid', 'dashed', 'dashed']
+    fig = plt.figure(figsize=(12, 7))
+    plt.rc('font', family='serif')
+    plt.rc('xtick', labelsize=10)
+    plt.rc('ytick', labelsize=10)
+
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.set_xlabel('Epoch', size=15)
+    ax.set_ylabel('Test Accuracy (%)', size=15)
+
+    for f, c, l in zip(filenames, colors, lines):
+
+        df = pd.read_csv(directory + '/' + f)
+        label = f.split('.csv')[0].split('/')[0]
+        print(label)
+
+        if label in offsets.keys():
+            # print(df)
+            df = df.iloc[:offsets[label][1]]
+            print(df)
+            df = df.shift(periods=offsets[label][0])
+            print(df)
+
+        ax.plot(df.index, df['test_accs'], color=c, ls=l,
+                label=f.split('.csv')[0])
+
+    plt.scatter(df.index, df['test_accs'], color=c)
+
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
+              fancybox=True, shadow=True, ncol=5, prop=dict(size=12))
+    plt.savefig(directory + '/' + result_name)
