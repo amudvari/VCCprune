@@ -12,8 +12,8 @@ class encodingUnit(nn.Module):
         
         
         prevLayerChannels = prevLayerProps['PrevLayerOutChannel']
-        compressedChannelNum = int(prevLayerChannels / compressionProps['feature_compression_factor'])
-        
+        compressedChannelNum = int(prevLayerProps['NextLayerInChannel'] / compressionProps['feature_compression_factor'])
+
         self.scaler = 15
         prune_inn = self.scaler * torch.rand((1,compressedChannelNum,1,1))
         self.prune_filter = nn.Parameter(prune_inn)

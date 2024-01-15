@@ -68,13 +68,15 @@ def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
     layers = []  
     return_encoder = False
     for v in cfg:
-        if v == 'CL':
+        if isinstance(v, str) and v.endswith("CL"):
+            out_channels = int(v[:-2])
             prevLayerProps = {}
             prevLayerProps["PrevLayerOutChannel"] = in_channels
+            prevLayerProps["NextLayerInChannel"] = out_channels
             encoder = encodingUnit(compressionProps,prevLayerProps)
-            layers += [encoder] 
+            layers += [encoder]
             return_encoder = True
-        elif v == 'CS':   
+        elif v == 'CS':
             prevLayerProps = {}
             prevLayerProps["PrevLayerOutChannel"] = in_channels
             layers += [decodingUnit(compressionProps,prevLayerProps)]
@@ -94,33 +96,34 @@ def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
         return nn.Sequential(*layers)
 
 
+def split_list(input_list):
+    list1, list2 = [], ['CS']
+
+    for item in input_list:
+        if isinstance(item, str) and item.endswith("CL"):
+            # Found a string ending with "CL", add it to list1 and break the loop
+            list1.append(item)
+            break
+        else:
+            list1.append(item)
+
+    # Add the remaining items to list2
+    list2.extend(input_list[len(list1):])
+
+    print(f"Client layers: {list1}")
+    print(f"Server layers: {list2}")
+    return list1, list2
+
+## To make add Compression to a specific layer, just add 'CL' term as a string
+## e.g. 256 -> '256CL'
+
 cfg = {
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'A': [64, 'M', '128CL', 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
-cfg_local = {
-    #'A': [64, 'M', 128, 'M'],               ##########################################
-    #'E': [64, 64, 'M', 128, 128],
-    'A': [64, 'M', 128, 'M', 'CL'],  #l4      ##########################################
-    #'A': ['CL'],
-    #'A':  [64, 'M', 128, 'M', 256,'CL'],
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 'CL'],
-    'D': [64, 'CL'],
-    'E': [64, 64, 'M', 128, 128, 'CL'],
-    'D': [64, 64, 'M', 128, 128, 'CL'],
-}
-cfg_server = {
-    #'A': [256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],                   ##########################################
-    #'E': ['M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
-    'A': ['CS',256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],         #####################################################
-    #'A': ['CS', 64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'], #l4
-    #'A': ['CS', 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'A': ['CS',512, 'M', 512, 512, 'M'],
-    'D': ['CS', 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
-    'E': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
-    'D': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
-}
+
+cfg_local, cfg_server = split_list(cfg['A'])
 
 
 
@@ -129,12 +132,14 @@ def NeuralNetwork(self, **kwargs):
     return model
 
 def NeuralNetwork_local(compressionProps,**kwargs):
-    model = VGG(make_layers(cfg_local['A'], compressionProps), local=True, **kwargs)     #E is 19, A is 11, D is 16
+    model = VGG(make_layers(cfg_local, compressionProps), local=True, **kwargs)     #E is 19, A is 11, D is 16
     return model
 
 def NeuralNetwork_server(compressionProps,**kwargs):
     #make sure its 128, 64 or something for in-channel correctly
-    model = VGG(make_layers(cfg_server['A'], compressionProps, in_channels = 512), **kwargs)     #for prev_channel, it is the last conv layer out channels in local
+    # Last value of cfg_local
+    in_channels = int(cfg_local[-1][:-2])
+    model = VGG(make_layers(cfg_server, compressionProps, in_channels = in_channels), **kwargs)     #for prev_channel, it is the last conv layer out channels in local
     return model
 
 
