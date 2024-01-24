@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from datasets.cifar10 import load_CIFAR10_dataset
 from datasets.stl10 import load_STL10_dataset
 from datasets.imagenet100 import load_Imagenet100_dataset
+from models.vggModel import NeuralNetwork
+import torch.nn as nn
+import time
 
 def get_device(dev: str = None):
     if dev:
@@ -69,6 +72,39 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local,
         split_vals.backward(split_grad)
         optimizer_server.step()
         optimizer_local.step()
+
+        if batch % 1000 == 0:
+            loss, current = loss.item(), batch * len(X)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            total_loss += loss
+        else:
+            total_loss += loss.item()
+
+    return total_loss
+
+
+def train_single_device_step(dataloader, model, loss_fn, optimizer,
+          quantizeDtype=torch.float32,
+          realDtype=torch.float32, **kwargs):
+    size = len(dataloader.dataset)
+    model.train()
+
+    total_loss = 0
+    device = kwargs['device']
+
+    for batch, (X, y) in enumerate(dataloader):
+        X, y = X.to(device), y.to(device)
+
+        # Compute prediction error
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        # Backpropagation
+        optimizer.zero_grad()
+
+        loss.backward()
+
+        optimizer.step()
 
         if batch % 1000 == 0:
             loss, current = loss.item(), batch * len(X)
@@ -212,6 +248,28 @@ def test(dataloader, model_local, model_server, loss_fn,
     return (100*correct, test_loss)
 
 
+def test_single_device_step(dataloader, model, loss_fn, **kwargs):
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    model.eval()
+    test_loss, correct = 0, 0
+    device = kwargs['device']
+    with torch.no_grad():
+        for X, y in dataloader:
+            X, y = X.to(device), y.to(device)
+
+            # Compute prediction error
+            pred = model(X)
+
+            test_loss += loss_fn(pred, y).item()
+            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+    test_loss /= num_batches
+    correct /= size
+    print(
+        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    return (100*correct, test_loss)
+
+
 def prunetest(dataloader, model_local, model_server, loss_fn, budget,
               quantizeDtype=torch.float16, realDtype=torch.float32,
               mask_filtering_method="partition", **kwargs):
@@ -332,3 +390,45 @@ def plot_with_offset(filenames, result_name="Figure_6",
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
               fancybox=True, shadow=True, ncol=5, prop=dict(size=12))
     plt.savefig(directory + '/' + result_name)
+
+
+def train_single_device(dataset, training_epochs=50,device=None,
+                        filename="test.csv", lr=1e-3, result_directory="figures/Figure_6",
+                        model_path="results/savedModels/single_device/model1.pth"):
+
+
+    start_time = time.time()
+    train_dataloader, test_dataloader, num_classes = get_dataloaders(dataset)
+
+    device = get_device(device)
+    model = NeuralNetwork(num_classes=num_classes).to(device)
+
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(),  lr=lr,
+                                 momentum=0.9, weight_decay=5e-4)
+
+    #error track: 
+    avg_errors = []
+    avg_mask_errors = []
+    test_accs = []
+    test_errors = []
+
+    # Training
+    epochs = training_epochs
+    for t in range(epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        avg_error = train_single_device_step(train_dataloader, model, loss_fn,
+                          optimizer, device=device)
+        avg_errors.append(avg_error)
+        avg_mask_errors.append(0)
+        test_acc, test_error = test_single_device_step(test_dataloader, model, 
+                                    loss_fn, device=device)
+        test_accs.append(test_acc)
+        test_errors.append(test_error)
+        print("entire epoch's error: ", avg_error)
+
+    end_time = time.time()
+    print("Total time: ", end_time - start_time)
+
+    # torch.save(model.state_dict(), model_path)
+    # print("Saved PyTorch Model State to {:s}".format(model_path))

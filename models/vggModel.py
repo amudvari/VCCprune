@@ -118,16 +118,17 @@ def split_list(input_list):
 ## e.g. 256 -> '256CL'
 
 cfg = {
-    'A': [64, 'M', '128CL', 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'ACL': [64, 'M', '128CL', 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
-cfg_local, cfg_server = split_list(cfg['A'])
+cfg_local, cfg_server = split_list(cfg['ACL'])
 
 
 
-def NeuralNetwork(self, **kwargs):
+def NeuralNetwork(**kwargs):
     model = VGG(make_layers(cfg['A']), **kwargs)     #E is 19, A is 11
     return model
 
